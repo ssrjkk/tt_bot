@@ -1,0 +1,51 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\ssrjk\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(WindowsPath('D:/лабы гуап/Курс_2_Технологии_программирования/Код/Курсовая/.hypothesis/examples'))
+benchmark: 5.3.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: D:\лабы гуап\Курс_2_Технологии_программирования\Код\Курсовая
+configfile: pytest.ini
+plugins: allure-pytest-2.16.2, anyio-4.13.0, Faker-40.40.0, hypothesis-6.115.0, asyncio-1.4.0, base-url-2.1.0, benchmark-5.3.0, cov-7.1.0, mock-3.16.0, playwright-0.8.0, rerunfailures-16.7, timeout-2.4.0, xdist-3.8.0, respx-0.23.1, time-machine-3.2.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 24 items
+
+tests/test_database.py::test_user_upsert_and_task_crud PASSED            [  4%]
+tests/test_database.py::test_invalid_priority_raises_error PASSED        [  8%]
+tests/test_database.py::test_cascade_delete_logs PASSED                  [ 12%]
+tests/test_database.py::test_filter_tasks_by_status PASSED               [ 16%]
+tests/test_database.py::test_empty_analytics_summary PASSED              [ 20%]
+tests/test_handlers.py::test_start_command_registers_user PASSED         [ 25%]
+tests/test_handlers.py::test_cb_home PASSED                              [ 29%]
+tests/test_handlers.py::test_cb_create_start PASSED                      [ 33%]
+tests/test_handlers.py::test_fsm_process_title PASSED                    [ 37%]
+tests/test_handlers.py::test_fsm_process_category PASSED                 [ 41%]
+tests/test_handlers.py::test_fsm_process_endpoint PASSED                 [ 45%]
+tests/test_handlers.py::test_fsm_task_creation_flow PASSED               [ 50%]
+tests/test_handlers.py::test_cb_tasks_list_empty PASSED                  [ 54%]
+tests/test_handlers.py::test_cb_tasks_list_with_tasks PASSED             [ 58%]
+tests/test_handlers.py::test_cb_task_view PASSED                         [ 62%]
+tests/test_handlers.py::test_cb_task_run PASSED                          [ 66%]
+tests/test_handlers.py::test_cb_task_delete PASSED                       [ 70%]
+tests/test_handlers.py::test_stats_callback_rendering PASSED             [ 75%]
+tests/test_handlers.py::test_cb_export_csv PASSED                        [ 79%]
+tests/test_handlers.py::test_keyboard_functions PASSED                   [ 83%]
+tests/test_services.py::test_worker_pool_execution_and_analytics PASSED  [ 87%]
+tests/test_services.py::test_immediate_execution_success PASSED          [ 91%]
+tests/test_services.py::test_immediate_execution_failure PASSED          [ 95%]
+tests/test_services.py::test_csv_report_generation PASSED                [100%]
+
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.12.10-final-0 _______________
+
+Name               Stmts   Miss  Cover
+--------------------------------------
+src\__init__.py        0      0   100%
+src\database.py       82      5    94%
+src\handlers.py      100      6    94%
+src\keyboards.py      17      0   100%
+src\models.py         28      0   100%
+src\services.py       69      2    97%
+src\states.py          6      0   100%
+--------------------------------------
+TOTAL                302     13    96%
+============================= 24 passed in 8.07s ==============================
