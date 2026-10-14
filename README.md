@@ -72,11 +72,11 @@ python -m src.main
 pytest --cov=src --cov-report=term-missing
 ```
 
-24 теста, покрытие 96%:
+24 теста, покрытие 95%:
 
 | Модуль | Покрытие |
 |---|---|
-| database.py | 94% |
+| database.py | 92% |
 | handlers.py | 94% |
 | keyboards.py | 100% |
 | models.py | 100% |
