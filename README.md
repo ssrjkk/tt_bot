@@ -1,12 +1,12 @@
 # Telegram Task & Monitoring Bot
 
 [![CI](https://github.com/ssrjkk/tt_bot/actions/workflows/ci.yml/badge.svg)](https://github.com/ssrjkk/tt_bot/actions/workflows/ci.yml)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
 
-Курсовая работа по дисциплине «Технология программирования» (ГУАП, вариант 18).
+Курсовая работа по дисциплине «Технологии программирования» (ГУАП, вариант 18).
 
 Телеграм-бот для управления задачами и мониторинга сервисов. Пользователь создаёт задачи с привязкой к целевому эндпоинту, запускает проверки через пул асинхронных воркеров, получает аналитику и выгружает отчёты в CSV.
 
@@ -119,25 +119,3 @@ sudo systemctl enable --now guap_var18_bot.service
 - `PRAGMA cache_size=-64000` — 64 MB кэш в памяти
 - `PRAGMA temp_store=MEMORY` — временные таблицы в RAM
 - Три индекса: `tasks(user_id)`, `tasks(status)`, `execution_logs(task_id)`
-- Результат: время отклика 125–438 мс вместо 10–20 секунд
-
-
-## Installation
-
-```bash
-git clone https://github.com/ssrjkk/tt_bot.git
-cd tt_bot
-pip install -r requirements.txt
-```
-
-## Usage
-
-```bash
-python bot.py
-```
-
-## Testing
-
-```bash
-pytest
-```
