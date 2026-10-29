@@ -4,7 +4,7 @@ import csv
 import io
 from typing import Optional, Callable, Awaitable
 from src.database import DatabaseRepository
-from src.models import TaskDTO, ExecutionLogDTO
+from src.models import ExecutionLogDTO
 
 
 class AsyncWorkerPool:
@@ -12,7 +12,7 @@ class AsyncWorkerPool:
         self,
         repo: DatabaseRepository,
         workers_count: int = 3,
-        probe_func: Optional[Callable[[str], Awaitable[tuple[bool, str]]]] = None
+        probe_func: Optional[Callable[[str], Awaitable[tuple[bool, str]]]] = None,
     ):
         self.repo = repo
         self.workers_count = workers_count
@@ -61,7 +61,7 @@ class AsyncWorkerPool:
             task_id=task_id,
             result_status=final_status,
             latency_ms=elapsed_ms,
-            details=details
+            details=details,
         )
         log_id = await self.repo.add_execution_log(log_dto)
         log_dto.id = log_id
@@ -87,7 +87,19 @@ class ReportGeneratorService:
         tasks = await self.repo.get_user_tasks(user_id)
         output = io.StringIO()
         writer = csv.writer(output, delimiter=";")
-        writer.writerow(["ID", "Title", "Category", "Endpoint", "Priority", "Status", "Updated_At"])
+        writer.writerow(
+            ["ID", "Title", "Category", "Endpoint", "Priority", "Status", "Updated_At"]
+        )
         for t in tasks:
-            writer.writerow([t.id, t.title, t.category, t.target_endpoint, t.priority, t.status, t.updated_at])
+            writer.writerow(
+                [
+                    t.id,
+                    t.title,
+                    t.category,
+                    t.target_endpoint,
+                    t.priority,
+                    t.status,
+                    t.updated_at,
+                ]
+            )
         return output.getvalue()

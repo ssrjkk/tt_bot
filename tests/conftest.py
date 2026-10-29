@@ -9,7 +9,10 @@ async def db_repo(tmp_path):
     db_file = tmp_path / "test_var18.db"
     repo = DatabaseRepository(str(db_file))
     await repo.init_db()
-    return repo
+    try:
+        yield repo
+    finally:
+        await repo.close()
 
 
 @pytest_asyncio.fixture
