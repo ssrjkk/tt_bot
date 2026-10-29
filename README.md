@@ -119,3 +119,7 @@ sudo systemctl enable --now guap_var18_bot.service
 - `PRAGMA cache_size=-64000` — 64 MB кэш в памяти
 - `PRAGMA temp_store=MEMORY` — временные таблицы в RAM
 - Три индекса: `tasks(user_id)`, `tasks(status)`, `execution_logs(task_id)`
+
+---
+
+**SSRJKK** — [GitHub](https://github.com/ssrjkk) · [Telegram](https://t.me/ssrjkk) · [Projects hub](https://ssrjkk.github.io/) · [Bot catalogue](https://t.me/ssrjkk_bot)
