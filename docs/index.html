@@ -1,194 +1,457 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TT Bot — задачи и мониторинг сервисов в Telegram</title>
-<meta name="description" content="Телеграм-бот управления задачами и мониторинга эндпоинтов: FSM-диалог, пул асинхронных воркеров, SQLite WAL, аналитика latency и экспорт в CSV."/>
-<link rel="canonical" href="https://ssrjkk.github.io/tt_bot/"/>
-<meta name="theme-color" content="#0a0a12"/>
-<meta property="og:type" content="website"/>
-<meta property="og:title" content="TT Bot — задачи и мониторинг сервисов в Telegram"/>
-<meta property="og:description" content="Телеграм-бот управления задачами и мониторинга эндпоинтов: FSM-диалог, пул асинхронных воркеров, SQLite WAL, аналитика latency и экспорт в CSV."/>
-<meta property="og:url" content="https://ssrjkk.github.io/tt_bot/"/>
-<meta name="twitter:card" content="summary_large_image"/>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>tt_bot — Telegram-бот для университетских лабораторных — SSRJKK</title>
+<meta name="description" content="Создайте задачу, укажите адрес сервиса и запустите проверку. Асинхронные исполнители обработают очередь, а результаты останутся в SQLite. Python · aiogram 3 · SQLite.">
+<meta name="theme-color" content="#a0d4ee">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='5' y='9' width='22' height='18' rx='8' fill='%23b1dff6'/%3E%3Crect x='10' y='3' width='12' height='10' rx='5' fill='%23b1dff6'/%3E%3Crect x='12' y='6' width='8' height='5' rx='2.5' fill='%230a0c10'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Substitute из спеки: Wotfard → Figtree, но у Figtree нет кириллицы — берём Onest (ближайший округлый геометрический гротеск с кириллицей); Cartograph CF → JetBrains Mono 600 -->
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0a0a12;--bg2:#0e0e1a;--surface:rgba(255,255,255,.035);
-  --line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.14);
-  --text:#ececf2;--muted:#9a9ab0;--faint:#6b6b82;
-  --accent:#22d3ee;--accent-soft:rgba(34,211,238,.12);
-  --mono:'JetBrains Mono',ui-monospace,monospace;
-  --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-  --r:16px;--maxw:1120px;
+  --paper:#ffffff;--ink:#0a0c10;--blurple:#4242fa;--raspberry:#e60067;
+  --sky:#a0d4ee;--cloud:#b1dff6;--mist:#ddeef8;--dusk:#5a6072;
+  --harbor:#294e60;--slate:#262d40;--gunmetal:#3d455c;
+  --sans:'Onest',Verdana,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
 }
-*{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;
-  -webkit-font-smoothing:antialiased;overflow-x:hidden}
-body::before{content:"";position:fixed;inset:0;z-index:-2;
-  background:
-    radial-gradient(60vw 50vh at 78% -8%,var(--accent-soft),transparent 60%),
-    radial-gradient(50vw 40vh at 8% 12%,rgba(124,58,237,.10),transparent 60%),
-    var(--bg);}
-body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background-image:linear-gradient(var(--line) 1px,transparent 1px),
-    linear-gradient(90deg,var(--line) 1px,transparent 1px);
-  background-size:56px 56px;
-  mask-image:radial-gradient(80vw 70vh at 50% 0%,#000 0%,transparent 75%);
-  opacity:.35;}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
-.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
-.mono{font-family:var(--mono)}
-.accent{color:var(--accent)}
-/* nav */
-nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);
-  background:rgba(10,10,18,.72);border-bottom:1px solid var(--line)}
-.nav-in{display:flex;align-items:center;justify-content:space-between;height:64px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em}
-.brand .dot{width:10px;height:10px;border-radius:3px;background:var(--accent);
-  box-shadow:0 0 16px var(--accent)}
-.nav-links{display:flex;gap:26px;font-size:14px;color:var(--muted)}
-.nav-links a:hover{color:var(--text)}
-.nav-cta{font-size:13px;font-weight:600;padding:8px 16px;border-radius:10px;
-  border:1px solid var(--line2);background:var(--surface);transition:.2s}
-.nav-cta:hover{border-color:var(--accent);color:var(--accent)}
-/* hero */
-header{padding:96px 0 72px;position:relative}
-.badge{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);
-  font-size:12px;color:var(--accent);border:1px solid var(--accent-soft);
-  background:var(--accent-soft);padding:6px 14px;border-radius:999px;margin-bottom:26px}
-.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);
-  box-shadow:0 0 10px var(--accent)}
-h1{font-size:clamp(38px,6vw,68px);line-height:1.04;letter-spacing:-.03em;
-  font-weight:700;max-width:16ch}
-h1 .grad{background:linear-gradient(100deg,var(--accent),#c4b5fd 90%);
-  -webkit-background-clip:text;background-clip:text;color:transparent}
-.lede{margin-top:24px;font-size:clamp(16px,2.2vw,20px);color:var(--muted);max-width:60ch}
-.cta-row{display:flex;flex-wrap:wrap;gap:14px;margin-top:38px}
-.btn{display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:15px;
-  padding:13px 24px;border-radius:12px;transition:.2s;border:1px solid transparent}
-.btn-primary{background:var(--accent);color:#0a0a12;
-  box-shadow:0 8px 30px -8px var(--accent)}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 14px 40px -8px var(--accent)}
-.btn-ghost{border-color:var(--line2);background:var(--surface);color:var(--text)}
-.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
-/* metrics band */
-.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-  gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);
-  overflow:hidden;margin-top:64px}
-.metric{background:var(--bg2);padding:26px 24px}
-.metric .num{font-family:var(--mono);font-size:30px;font-weight:600;color:var(--accent);
-  letter-spacing:-.02em}
-.metric .lbl{font-size:13px;color:var(--muted);margin-top:6px}
-/* sections */
-section{padding:72px 0}
-.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--accent);margin-bottom:14px}
-h2{font-size:clamp(26px,3.6vw,38px);letter-spacing:-.02em;line-height:1.15;font-weight:700}
-.sec-lede{color:var(--muted);margin-top:14px;max-width:62ch}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:44px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
-  padding:28px;transition:.25s;position:relative;overflow:hidden}
-.card:hover{transform:translateY(-4px);border-color:var(--accent-soft);
-  background:rgba(255,255,255,.05)}
-.card .ic{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;
-  background:var(--accent-soft);color:var(--accent);margin-bottom:18px}
-.card h3{font-size:17px;font-weight:600;letter-spacing:-.01em;margin-bottom:9px}
-.card p{font-size:14.5px;color:var(--muted)}
-/* code */
-.codeblock{background:#0b0b16;border:1px solid var(--line);border-radius:var(--r);
-  overflow:hidden;margin-top:40px}
-.code-head{display:flex;align-items:center;gap:8px;padding:13px 18px;
-  border-bottom:1px solid var(--line);background:rgba(255,255,255,.02)}
-.code-head .c{width:11px;height:11px;border-radius:50%;background:var(--line2)}
-.code-head .c:first-child{background:#ff5f57}.code-head .c:nth-child(2){background:#febc2e}
-.code-head .c:nth-child(3){background:#28c840}
-.code-head .fname{margin-left:10px;font-family:var(--mono);font-size:12px;color:var(--faint)}
-pre{padding:22px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.75;
-  color:#c8c8dc}
-pre .cm{color:var(--faint)}pre .pr{color:var(--accent)}
-/* chips */
-.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:36px}
-.chip{font-family:var(--mono);font-size:12.5px;color:var(--muted);
-  border:1px solid var(--line);background:var(--surface);padding:7px 14px;border-radius:999px}
-.chip:hover{border-color:var(--accent-soft);color:var(--text)}
-/* footer */
-footer{border-top:1px solid var(--line);padding:48px 0;margin-top:40px}
-.foot-in{display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between}
-.foot-links{display:flex;gap:22px;font-size:14px;color:var(--muted)}
-.foot-links a:hover{color:var(--accent)}
-.copy{font-size:13px;color:var(--faint)}
-/* reveal */
-.reveal{opacity:0;transform:translateY(22px);transition:opacity .6s,transform .6s}
-.reveal.in{opacity:1;transform:none}
-@media(max-width:640px){header{padding:64px 0 48px}.nav-links{display:none}
-  section{padding:52px 0}.metric .num{font-size:24px}}
-@media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}
-  html{scroll-behavior:auto}}
+img,svg{display:block}
+a:focus-visible,button:focus-visible{outline:2px solid var(--blurple);outline-offset:3px;border-radius:4px}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.skip{position:fixed;left:16px;top:-48px;z-index:50;background:var(--slate);color:var(--paper);height:42px;display:inline-flex;align-items:center;padding:0 16px;border-radius:4px;font:500 16px/1.5 var(--sans);transition:top .2s}
+.skip:focus{top:12px}
+
+/* ---------- type roles (по type scale спеки) ---------- */
+h1,h2,h3{font-weight:600;margin:0;color:var(--ink)}
+h1{font-size:32px;line-height:1.5}
+h2,h3{font-size:22px;line-height:1.5}
+.eyebrow{display:inline-block;font:500 16px/24px var(--sans);letter-spacing:2px;text-transform:uppercase;color:var(--raspberry)}
+.sub{font:500 17px/1.5 var(--sans);color:var(--dusk)}
+.wordmark{font:500 24px/1.5 var(--sans);letter-spacing:-1px;color:var(--blurple)}
+.chip{font:600 15.94px/1.5 var(--mono);background:var(--mist);border-radius:4px;padding:1px 7px}
+.h-chip{font:600 20.63px/1.5 var(--mono);background:var(--mist);border-radius:4px;padding:0 8px}
+
+/* ---------- header ---------- */
+.sitehead{position:absolute;top:0;left:0;right:0;z-index:20}
+.nav-inner{max-width:1100px;margin:0 auto;height:48px;display:flex;align-items:center;padding:0 16px}
+.nav-inner .wordmark{margin-right:8px}
+.topnav{display:flex}
+.topnav a{padding:0 16px;font:400 16px/1.5 var(--sans);color:var(--ink)}
+.topnav a:hover{text-decoration:underline}
+.head-icons{margin-left:auto;display:flex;gap:4px}
+.icon-btn{width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:var(--ink)}
+.icon-btn:hover{background:rgba(10,12,16,.07)}
+.icon-btn svg{width:18px;height:18px}
+
+/* ---------- hero ---------- */
+.hero{position:relative;background:var(--sky);padding:120px 16px 264px;text-align:center;overflow:hidden}
+.hero-inner{position:relative;z-index:2;max-width:680px;margin:0 auto}
+.hero h1{margin-top:10px}
+.hero .intro{font:500 17px/1.5 var(--sans);color:var(--dusk);max-width:600px;margin:12px auto 0}
+.cta-row{display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;margin-top:32px}
+.btn-slate{display:inline-flex;align-items:center;gap:12px;height:42px;padding:0 18px 0 6px;border-radius:4px;background:var(--slate);color:var(--paper);font:500 16px/1.5 var(--sans)}
+.btn-slate:hover{filter:brightness(1.2)}
+.icon-well{width:30px;height:30px;border-radius:2px;background:var(--gunmetal);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.icon-well svg{width:14px;height:14px}
+.link-strong{display:inline-flex;align-items:center;gap:6px;font:600 16px/1.5 var(--sans);color:var(--ink)}
+.link-strong:hover{text-decoration:underline}
+.hero-clouds{position:absolute;left:0;right:0;bottom:-1px;width:100%;height:244px;z-index:1}
+
+/* ---------- sections ---------- */
+.section{margin-top:104px}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+.narrow{max-width:808px;margin-left:auto;margin-right:auto}
+
+/* возможности — без карточек, как записи фида */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:48px 64px;margin-top:32px}
+.entry h3{font-size:22px}
+.entry h3 .h-chip{font-size:19px}
+.entry .sub{margin-top:4px}
+.entry p{margin:8px 0 0;font:400 16px/1.5 var(--sans)}
+.section-lead{font:500 17px/1.5 var(--sans);color:var(--dusk);margin:0;max-width:640px}
+
+/* процесс */
+.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;margin-top:32px}
+.tag{display:inline-block;background:var(--cloud);border-radius:8px;padding:5px 12px;font:400 14px/21px var(--sans);color:var(--ink)}
+.step h3{margin:14px 0 8px}
+.step p{margin:0;font:400 16px/1.5 var(--sans)}
+
+/* демо: учебная очередь */
+.queue{list-style:none;margin:32px 0 0;padding:0;max-width:760px}
+.qrow{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--mist)}
+.qrow:last-child{border-bottom:1px solid var(--mist)}
+.qleft{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.qleft .chip{white-space:nowrap}
+.addr{font:400 14px/1.5 var(--sans);color:var(--dusk);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qstatus{flex:none;display:inline-flex;align-items:center;gap:8px;background:var(--cloud);border-radius:8px;padding:5px 12px;font:400 14px/21px var(--sans);color:var(--ink);white-space:nowrap}
+.qdot{width:8px;height:8px;border-radius:50%;background:var(--dusk);flex:none}
+.qrow[data-state="checking"] .qstatus{background:var(--mist)}
+.qrow[data-state="checking"] .qdot{animation:pulse 1s ease-in-out infinite}
+.qrow[data-state="done"] .qdot{background:var(--harbor)}
+@keyframes pulse{50%{opacity:.25}}
+.run-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-top:28px}
+.qlog{font:400 14px/1.5 var(--sans);color:var(--dusk);margin:18px 0 0;max-width:760px}
+.honest{font:400 14px/1.5 var(--sans);color:var(--dusk);margin:20px 0 0;max-width:640px}
+
+/* запуск */
+.code-tools{display:flex;justify-content:flex-end;margin-bottom:10px}
+.copy{height:36px;padding:0 14px;border-radius:4px;border:0;cursor:pointer;background:var(--slate);color:var(--paper);font:500 14px/1.5 var(--sans)}
+.copy:hover{filter:brightness(1.25)}
+.codeblock{background:var(--mist);border-radius:8px;padding:20px 24px;max-width:760px}
+pre{margin:0;font:600 15.94px/1.5 var(--mono);color:var(--ink);overflow-x:auto;-webkit-overflow-scrolling:touch}
+pre .dim{color:var(--dusk)}
+
+/* футер: небо с облачным краем */
+.footer{position:relative;margin-top:104px;background:linear-gradient(#a0d4ee,#7dc4e8);padding:168px 0 56px;overflow:hidden}
+.footer-clouds{position:absolute;top:-1px;left:0;width:100%;height:96px}
+.fcols{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:32px}
+.fbrand p{margin:8px 0 0;font:400 14px/1.5 var(--sans);max-width:300px}
+.fbrand .who{margin-top:16px;font:500 14px/1.5 var(--sans);color:var(--harbor)}
+.fcol h4{margin:0 0 12px;font:500 14px/1.5 var(--sans);color:var(--harbor);text-transform:uppercase}
+.fcol a,.fcol span{display:block;font:400 14px/1.5 var(--sans);color:var(--ink);padding:2px 0}
+.fcol a:hover{text-decoration:underline}
+.fbottom{max-width:1100px;margin:44px auto 0;padding:0 24px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font:400 14px/1.5 var(--sans);color:var(--harbor)}
+
+/* ---------- adaptive ---------- */
+@media(max-width:960px){
+  .topnav{display:none}
+  .fgrid{grid-template-columns:1fr;gap:40px}
+  .pgrid{grid-template-columns:1fr 1fr;gap:40px 24px}
+  .fgrid-footer{grid-template-columns:1fr 1fr;row-gap:36px}
+}
+@media(max-width:600px){
+  h1{font-size:26px}
+  .hero{padding:100px 20px 216px}
+  .hero-clouds{height:200px}
+  .section{margin-top:72px}
+  .pgrid{grid-template-columns:1fr}
+  .fgrid-footer{grid-template-columns:1fr}
+  .footer{padding-top:140px}
+  .cta-row{gap:16px}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*:before,*:after{transition:none!important;animation:none!important}
+}
 </style>
 </head>
 <body>
-<nav><div class="wrap nav-in">
-  <a class="brand" href="#top"><span class="dot"></span>TT Bot</a>
-  <div class="nav-links"><a href="#features">Возможности</a><a href="#stack">Запуск</a></div>
-  <a class="nav-cta" href="https://github.com/ssrjkk/tt_bot">GitHub</a>
-</div></nav>
-<header id="top"><div class="wrap">
-  <span class="badge">Telegram · мониторинг</span>
-  <h1>Задачи и проверки — <span class='grad'>в одном чате</span></h1>
-  <p class="lede">Создаёте задачу с привязкой к эндпоинту, бот гоняет проверки через пул асинхронных воркеров и отдаёт аналитику: сколько выполнено, где ошибки, какой средний latency. Отчёт выгружается в CSV.</p>
-  <div class="cta-row">
-    <a class="btn btn-primary" href="https://github.com/ssrjkk/tt_bot">Открыть на GitHub <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15c-1 1-2 5-2 5s4-1 5-2"/><path d="M9 15l-4-4c1-5 5-9 11-9 0 6-4 10-9 11Z"/><circle cx="13" cy="9" r="1.5"/></svg></a>
-    <a class="btn btn-ghost" href="#features">Возможности</a>
+<a class="skip" href="#main">К содержимому</a>
+
+<!-- переиспользуемый глиф бота-талисмана -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="botdef">
+      <ellipse cx="42" cy="94" rx="40" ry="8" fill="#294e60" opacity=".14"/>
+      <rect x="-4" y="50" width="12" height="20" rx="6" fill="#b1dff6"/>
+      <rect x="76" y="50" width="12" height="20" rx="6" fill="#b1dff6"/>
+      <rect x="6" y="32" width="72" height="56" rx="24" fill="#b1dff6"/>
+      <rect x="18" y="14" width="48" height="36" rx="15" fill="#b1dff6"/>
+      <rect x="22" y="22" width="40" height="20" rx="9" fill="#0a0c10"/>
+      <circle cx="33" cy="32" r="3.2" fill="#a0d4ee"/>
+      <circle cx="51" cy="32" r="3.2" fill="#a0d4ee"/>
+      <path d="M42 14V6" stroke="#0a0c10" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="42" cy="4" r="4" fill="#4242fa"/>
+    </g>
+  </defs>
+</svg>
+
+<header class="sitehead">
+  <div class="nav-inner">
+    <a class="wordmark" href="./">tt_bot</a>
+    <nav class="topnav" aria-label="Основная навигация">
+      <a href="#features">Возможности</a>
+      <a href="#process">Как это работает</a>
+      <a href="#demo">Демо</a>
+      <a href="#start">Запуск</a>
+    </nav>
+    <div class="head-icons">
+      <a class="icon-btn" href="https://github.com/ssrjkk/tt_bot#readme" aria-label="Документация (README)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5C7 4 10 4.1 12 6c2-1.9 5-2 8-.5V19c-3-1.5-6-1.4-8 .5-2-1.9-5-2-8-.5Z"/><path d="M12 6v13.5"/></svg>
+      </a>
+      <a class="icon-btn" href="https://github.com/ssrjkk/tt_bot" aria-label="Репозиторий на GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
+      </a>
+    </div>
   </div>
-  <div class="metrics"><div class="metric reveal"><div class="num">4</div><div class="lbl">категории задач</div></div>
-<div class="metric reveal"><div class="num">WAL</div><div class="lbl">режим SQLite</div></div>
-<div class="metric reveal"><div class="num">CSV</div><div class="lbl">экспорт реестра</div></div></div>
-</div></header>
-<section id="features"><div class="wrap">
-  <div class="eyebrow">Возможности</div>
-  <h2>От постановки задачи до отчёта</h2>
-  <p class="sec-lede">Полный цикл в Telegram: постановка через диалог, выполнение воркерами, хранение и аналитика. Без отдельной панели.</p>
-  <div class="grid"><div class="card reveal"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/><circle cx="19" cy="18" r="2"/></svg></div><h3>FSM-диалог</h3><p>Создание задачи пошагово: название, категория, эндпоинт, приоритет. Конечный автомат не даёт пропустить шаг.</p></div>
-<div class="card reveal"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></div><h3>Четыре категории</h3><p>Backend API, QA AutoTest, RPC Node, DevOps / VPS — задачи разделены по типу цели.</p></div>
-<div class="card reveal"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg></div><h3>Пул воркеров</h3><p>Проверки выполняются асинхронно через asyncio.Queue: несколько целей проверяются параллельно, а не по очереди.</p></div>
-<div class="card reveal"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></div><h3>SQLite WAL</h3><p>Хранение в SQLite с WAL-режимом, индексами и кэшем 64 MB — быстро и без отдельного сервера БД.</p></div>
-<div class="card reveal"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg></div><h3>Аналитика</h3><p>Сводка: всего задач, выполнено, в ожидании, ошибки и средний latency по проверкам.</p></div>
-<div class="card reveal"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg></div><h3>Экспорт в CSV</h3><p>Реестр задач выгружается в CSV одним действием — для отчёта или further-обработки.</p></div></div>
-</div></section>
-<section id="stack"><div class="wrap">
-  <div class="eyebrow">Запуск</div>
-  <h2>Развёртывание за команду</h2>
-  <p class="sec-lede">Python 3.11+, aiogram 3 и aiosqlite. Запуск в Docker или через systemd — бот сам поднимает БД и воркеров.</p>
-  <div class="chips"><span class="chip">Python 3.11+</span>
-<span class="chip">aiogram 3</span>
-<span class="chip">aiosqlite</span>
-<span class="chip">asyncio</span>
-<span class="chip">pytest</span>
-<span class="chip">Docker</span>
-<span class="chip">systemd</span></div>
-  <div class="codeblock reveal">
-    <div class="code-head"><span class="c"></span><span class="c"></span><span class="c"></span>
-      <span class="fname">terminal</span></div>
-    <pre><span class="pr">$ </span>git clone https://github.com/ssrjkk/tt_bot
-<span class="pr">$ </span>cd tt_bot
-<span class="cm"># </span>токен бота в .env
-<span class="pr">$ </span>docker compose up -d</pre>
+</header>
+
+<main id="main">
+<section class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Telegram-бот для университетских лабораторных</span>
+    <h1>От задачи до понятного отчёта.</h1>
+    <p class="intro">Создайте задачу, укажите адрес сервиса и запустите проверку. Асинхронные исполнители обработают очередь, а результаты останутся в SQLite.</p>
+    <div class="cta-row">
+      <a class="btn-slate" href="https://github.com/ssrjkk/tt_bot#readme">
+        <span class="icon-well" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span>
+        Открыть репозиторий
+      </a>
+      <a class="link-strong" href="https://github.com/ssrjkk/tt_bot#readme">Документация <span aria-hidden="true">→</span></a>
+    </div>
   </div>
-</div></section>
-<footer><div class="wrap foot-in">
-  <a class="brand" href="#top"><span class="dot"></span>TT Bot</a>
-  <div class="foot-links"><a href="https://github.com/ssrjkk/tt_bot">GitHub</a><a href="#features">Возможности</a><a href="#stack">Запуск</a></div>
-  <span class="copy">MIT · ssrjkk · 2026</span>
-</div></footer>
+  <svg class="hero-clouds" viewBox="0 0 1440 244" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <g fill="#ddeef8">
+      <ellipse cx="60" cy="205" rx="160" ry="75"/>
+      <ellipse cx="420" cy="215" rx="190" ry="85"/>
+      <ellipse cx="1090" cy="210" rx="180" ry="80"/>
+      <ellipse cx="1400" cy="225" rx="150" ry="70"/>
+    </g>
+    <g fill="#b1dff6">
+      <ellipse cx="180" cy="240" rx="180" ry="80"/>
+      <ellipse cx="980" cy="248" rx="160" ry="70"/>
+      <ellipse cx="1290" cy="244" rx="190" ry="85"/>
+    </g>
+    <g fill="none" stroke-linecap="round" stroke-dasharray="1 12" stroke-width="3">
+      <path d="M600 150A140 140 0 0 1 860 108" stroke="#4242fa" opacity=".5"/>
+      <path d="M628 176A112 112 0 0 1 852 146" stroke="#e60067" opacity=".38"/>
+      <path d="M652 98A92 92 0 0 1 812 72" stroke="#7dc4e8"/>
+    </g>
+    <g fill="#ffffff">
+      <ellipse cx="520" cy="268" rx="230" ry="95"/>
+      <ellipse cx="760" cy="258" rx="270" ry="100"/>
+      <ellipse cx="1020" cy="272" rx="230" ry="92"/>
+      <rect x="0" y="206" width="1440" height="40"/>
+    </g>
+    <use href="#botdef" transform="translate(690,70)"/>
+  </svg>
+</section>
+
+<section class="section" id="features">
+  <div class="wrap">
+    <span class="eyebrow">Возможности</span>
+    <p class="section-lead">Бот берёт на себя рутину приёма лабораторных: от команды в чате до готовой таблицы для преподавателя.</p>
+    <div class="fgrid">
+      <div class="entry">
+        <h3>Создание задач в чате <span class="h-chip">/task</span></h3>
+        <p>Преподаватель создаёт задачу прямо в Telegram: название и адрес сервиса — остальное бот делает сам.</p>
+      </div>
+      <div class="entry">
+        <h3>Асинхронная очередь <span class="h-chip">asyncio</span></h3>
+        <p>Работы не ждут друг друга: пул исполнителей на asyncio разбирает очередь параллельно, пока бот остаётся отзывчивым.</p>
+      </div>
+      <div class="entry">
+        <h3>Проверка доступности сервисов</h3>
+        <p>Перед приёмом работы бот проверяет, отвечает ли указанный адрес, и честно пишет результат — доступен сервис или нет.</p>
+      </div>
+      <div class="entry">
+        <h3>CSV-отчёты <span class="h-chip">.csv</span></h3>
+        <p>Результаты проверок выгружаются в CSV для преподавателя: таблица открывается где угодно, от Excel до Google Sheets.</p>
+      </div>
+      <div class="entry">
+        <h3>Статусы и история</h3>
+        <p>Каждая задача проходит понятные статусы, а вся история остаётся в SQLite — можно вернуться и посмотреть, что было.</p>
+      </div>
+      <div class="entry">
+        <h3>Лёгкий деплой на любой машине</h3>
+        <p>Python 3.11, aiogram 3 и SQLite — ничего лишнего. Бот поднимается на любой машине, от старого ноута до дешёвого VPS.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="process">
+  <div class="wrap">
+    <span class="eyebrow">Как это работает</span>
+    <h2>Четыре шага от задачи до отчёта</h2>
+    <div class="pgrid">
+      <div class="step">
+        <span class="tag">Шаг 1</span>
+        <h3>Создание задачи</h3>
+        <p>Команда в чате: название работы и адрес сервиса, который нужно проверить.</p>
+      </div>
+      <div class="step">
+        <span class="tag">Шаг 2</span>
+        <h3>Очередь asyncio</h3>
+        <p>Задача попадает в очередь; исполнители разбирают её без блокировки бота.</p>
+      </div>
+      <div class="step">
+        <span class="tag">Шаг 3</span>
+        <h3>Проверка сервиса</h3>
+        <p>Бот обращается по адресу и фиксирует, отвечает ли сервис, — результат честный.</p>
+      </div>
+      <div class="step">
+        <span class="tag">Шаг 4</span>
+        <h3>CSV-отчёт</h3>
+        <p>Итоги проверок выгружаются в CSV — преподаватель получает готовую таблицу.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section narrow" id="demo">
+  <span class="eyebrow">Демо</span>
+  <h2>Учебная очередь задач</h2>
+  <p class="section-lead" style="margin-top:12px">Нажмите «Запустить проверку» — очередь пройдёт цикл прямо на этой странице.</p>
+  <ul class="queue">
+    <li class="qrow" data-state="done">
+      <div class="qleft"><span class="chip">lab-01</span><span class="addr">http://127.0.0.1:8000/health</span></div>
+      <span class="qstatus"><i class="qdot" aria-hidden="true"></i><span class="qtxt">готово</span></span>
+    </li>
+    <li class="qrow" data-state="queue">
+      <div class="qleft"><span class="chip">lab-02</span><span class="addr">http://127.0.0.1:8001/health</span></div>
+      <span class="qstatus"><i class="qdot" aria-hidden="true"></i><span class="qtxt">в очереди</span></span>
+    </li>
+    <li class="qrow" data-state="queue">
+      <div class="qleft"><span class="chip">lab-03</span><span class="addr">http://127.0.0.1:8002/health</span></div>
+      <span class="qstatus"><i class="qdot" aria-hidden="true"></i><span class="qtxt">в очереди</span></span>
+    </li>
+  </ul>
+  <div class="run-row">
+    <button class="btn-slate" type="button" id="run-btn">
+      <span class="icon-well" aria-hidden="true"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.8v10.4c0 .62.68 1 1.21.67l8.1-5.2a.8.8 0 0 0 0-1.34l-8.1-5.2A.8.8 0 0 0 4 2.8Z"/></svg></span>
+      <span id="run-label">Запустить проверку</span>
+    </button>
+  </div>
+  <p class="qlog" aria-live="polite" id="qlog">Очередь готова к учебному запуску.</p>
+  <p class="honest">Учебная очередь. Это локальная иллюстрация: страница не подключается к реальным сервисам и не отправляет данные. Задачи и адреса — примеры.</p>
+</section>
+
+<section class="section narrow" id="start">
+  <span class="eyebrow">Запуск</span>
+  <h2>Клонировать и запустить</h2>
+  <p class="section-lead" style="margin-top:12px">Понадобятся Python 3.11+ и токен от @BotFather. Переменные окружения и полная инструкция — в README репозитория.</p>
+  <div class="code-tools">
+    <button class="copy" type="button" id="copy-btn" data-label="Скопировать">Скопировать</button>
+  </div>
+  <div class="codeblock">
+<pre id="code">git clone https://github.com/ssrjkk/tt_bot.git
+cd tt_bot
+pip install -r requirements.txt
+<span class="dim"># токен и путь к базе — в переменных окружения</span>
+export BOT_TOKEN="your_bot_token_here"
+export DB_PATH="coursework_var18.db"
+export WORKERS_COUNT=3
+python -m src.main</pre>
+  </div>
+</section>
+</main>
+
+<footer class="footer">
+  <svg class="footer-clouds" viewBox="0 0 1440 96" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
+    <g fill="#ffffff">
+      <rect x="0" y="-2" width="1440" height="14"/>
+      <circle cx="40" cy="6" r="46"/><circle cx="190" cy="-4" r="62"/><circle cx="360" cy="10" r="40"/>
+      <circle cx="540" cy="0" r="58"/><circle cx="720" cy="12" r="44"/><circle cx="900" cy="-2" r="64"/>
+      <circle cx="1080" cy="8" r="42"/><circle cx="1250" cy="2" r="58"/><circle cx="1420" cy="10" r="46"/>
+    </g>
+    <use href="#botdef" transform="translate(1218,100) rotate(180) scale(.72)"/>
+  </svg>
+  <div class="wrap fcols fgrid-footer">
+    <div class="fbrand">
+      <a class="wordmark" href="./">tt_bot</a>
+      <p>Telegram-бот для университетских лабораторных: сдача работ, отчёты, оценивание.</p>
+      <p class="who">Проект SSRJKK</p>
+    </div>
+    <div class="fcol">
+      <h4>Проект</h4>
+      <a href="https://github.com/ssrjkk/tt_bot">GitHub ↗</a>
+      <a href="https://github.com/ssrjkk/tt_bot#readme">README ↗</a>
+      <a href="https://ssrjkk.github.io/">Все проекты ↗</a>
+    </div>
+    <div class="fcol">
+      <h4>Разделы</h4>
+      <a href="#features">Возможности</a>
+      <a href="#process">Как это работает</a>
+      <a href="#demo">Демо</a>
+      <a href="#start">Запуск</a>
+    </div>
+    <div class="fcol">
+      <h4>Стек</h4>
+      <span>Python 3.11+</span>
+      <span>aiogram 3</span>
+      <span>SQLite</span>
+    </div>
+  </div>
+  <div class="fbottom">
+    <span>© 2026 · Проект SSRJKK</span>
+    <span>Иллюстрации на странице — учебные.</span>
+  </div>
+</footer>
+
 <script>
-const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){
-  e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.12});
-document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+(function(){
+  "use strict";
+  var STATES={queue:"в очереди",checking:"проверяется…",done:"готово"};
+  var rows=Array.prototype.slice.call(document.querySelectorAll(".qrow"));
+  var r2=rows[1],r3=rows[2];
+  var runBtn=document.getElementById("run-btn"),runLabel=document.getElementById("run-label");
+  var log=document.getElementById("qlog");
+  var running=false;
+
+  function setState(row,state){
+    if(!row)return;
+    row.dataset.state=state;
+    row.querySelector(".qtxt").textContent=STATES[state];
+  }
+  function later(fn,ms){
+    if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches){fn();return;}
+    setTimeout(fn,ms);
+  }
+  runBtn.addEventListener("click",function(){
+    if(running)return;
+    running=true;runBtn.setAttribute("aria-disabled","true");
+    setState(r2,"queue");setState(r3,"queue");
+    log.textContent="Очередь запущена: 2 работы ждут исполнителя (учебный прогон).";
+    later(function(){
+      setState(r2,"checking");
+      log.textContent="lab-02: исполнитель взял задачу, проверяем доступность сервиса…";
+      later(function(){
+        setState(r2,"done");
+        log.textContent="lab-02: сервис отвечает — работа принята (учебный ответ).";
+        later(function(){
+          setState(r3,"checking");
+          log.textContent="lab-03: исполнитель взял задачу, проверяем доступность сервиса…";
+          later(function(){
+            setState(r3,"done");
+            log.textContent="Готово: 3 из 3 работ проверены (учебный прогон).";
+            runLabel.textContent="Запустить снова";
+            runBtn.removeAttribute("aria-disabled");
+            running=false;
+          },1150);
+        },550);
+      },1150);
+    },450);
+  });
+
+  /* Копирование команды запуска */
+  var copyBtn=document.getElementById("copy-btn"),code=document.getElementById("code");
+  copyBtn.addEventListener("click",function(){
+    var btn=copyBtn,label=btn.dataset.label||"Скопировать";
+    function done(ok){
+      btn.textContent=ok?"Скопировано":"Выделите код и скопируйте вручную";
+      setTimeout(function(){btn.textContent=label;},2200);
+    }
+    function selectCode(){
+      try{
+        var r=document.createRange();r.selectNodeContents(code);
+        var sel=window.getSelection();sel.removeAllRanges();sel.addRange(r);
+      }catch(e){}
+    }
+    function legacyCopy(){
+      try{
+        var ta=document.createElement("textarea");ta.value=code.textContent;
+        ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);
+        ta.select();var ok=document.execCommand("copy");document.body.removeChild(ta);
+        if(ok){done(true);return true;}
+      }catch(e){}
+      return false;
+    }
+    if(legacyCopy())return;
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(code.textContent).then(function(){done(true);},function(){selectCode();done(false);});
+    }else{selectCode();done(false);}
+  });
+})();
 </script>
 </body>
 </html>
