@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>tt_bot — Telegram-бот для университетских лабораторных — SSRJKK</title>
+<title>tt_bot — Telegram-бот задач и мониторинга сервисов — SSRJKK</title>
 <meta name="description" content="Создайте задачу, укажите адрес сервиса и запустите проверку. Асинхронные исполнители обработают очередь, а результаты останутся в SQLite. Python · aiogram.">
 <meta name="theme-color" content="#a0d4ee">
 <meta name="color-scheme" content="light">
@@ -188,7 +188,7 @@ pre .dim{color:var(--dusk)}
 <main id="main">
 <section class="hero">
   <div class="hero-inner">
-    <span class="eyebrow">Telegram-бот для университетских лабораторных</span>
+    <span class="eyebrow">Telegram-бот задач и мониторинга сервисов</span>
     <h1>От задачи до понятного отчёта.</h1>
     <p class="intro">Создайте задачу, укажите адрес сервиса и запустите проверку. Асинхронные исполнители обработают очередь, а результаты останутся в SQLite.</p>
     <div class="cta-row">
@@ -229,11 +229,11 @@ pre .dim{color:var(--dusk)}
 <section class="section" id="features">
   <div class="wrap">
     <span class="eyebrow">Возможности</span>
-    <p class="section-lead">Бот берёт на себя рутину приёма лабораторных: от команды в чате до готовой таблицы для преподавателя.</p>
+    <p class="section-lead">Бот берёт на себя рутину проверок: от команды в чате до готовой таблицы в CSV.</p>
     <div class="fgrid">
       <div class="entry">
         <h3>Создание задач в чате <span class="h-chip">/task</span></h3>
-        <p>Преподаватель создаёт задачу прямо в Telegram: название и адрес сервиса — остальное бот делает сам.</p>
+        <p>Задачу создают прямо в Telegram: название и адрес сервиса — остальное бот делает сам.</p>
       </div>
       <div class="entry">
         <h3>Асинхронная очередь <span class="h-chip">asyncio</span></h3>
@@ -241,11 +241,11 @@ pre .dim{color:var(--dusk)}
       </div>
       <div class="entry">
         <h3>Проверка доступности сервисов</h3>
-        <p>Перед приёмом работы бот проверяет, отвечает ли указанный адрес, и честно пишет результат — доступен сервис или нет.</p>
+        <p>Бот проверяет, отвечает ли указанный адрес, и честно пишет результат — доступен сервис или нет.</p>
       </div>
       <div class="entry">
         <h3>CSV-отчёты <span class="h-chip">.csv</span></h3>
-        <p>Результаты проверок выгружаются в CSV для преподавателя: таблица открывается где угодно, от Excel до Google Sheets.</p>
+        <p>Результаты проверок выгружаются в CSV: таблица открывается где угодно, от Excel до Google Sheets.</p>
       </div>
       <div class="entry">
         <h3>Статусы и история</h3>
@@ -267,7 +267,7 @@ pre .dim{color:var(--dusk)}
       <div class="step">
         <span class="tag">Шаг 1</span>
         <h3>Создание задачи</h3>
-        <p>Команда в чате: название работы и адрес сервиса, который нужно проверить.</p>
+        <p>Команда в чате: название задачи и адрес сервиса, который нужно проверить.</p>
       </div>
       <div class="step">
         <span class="tag">Шаг 2</span>
@@ -282,7 +282,7 @@ pre .dim{color:var(--dusk)}
       <div class="step">
         <span class="tag">Шаг 4</span>
         <h3>CSV-отчёт</h3>
-        <p>Итоги проверок выгружаются в CSV — преподаватель получает готовую таблицу.</p>
+        <p>Итоги проверок выгружаются в CSV — на выходе готовая таблица.</p>
       </div>
     </div>
   </div>
@@ -349,7 +349,7 @@ python -m src.main</pre>
   <div class="wrap fcols fgrid-footer">
     <div class="fbrand">
       <a class="wordmark" href="./">tt_bot</a>
-      <p>Telegram-бот для университетских лабораторных: сдача работ, отчёты, оценивание.</p>
+      <p>Telegram-бот задач и мониторинга сервисов: очереди проверок, статусы, отчёты.</p>
       <p class="who">Проект SSRJKK</p>
     </div>
     <div class="fcol">
