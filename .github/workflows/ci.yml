@@ -36,7 +36,7 @@ jobs:
         run: >-
           env -i PATH="$PATH" HOME="$RUNNER_TEMP" LANG=C.UTF-8
           PYTHON_DOTENV_DISABLED=1
-          python -m pytest tests/ -v --cov=src --cov-report=xml
+          python -m pytest tests/ -v --cov=src --cov-report=xml --cov-fail-under=90
           --allow-hosts=127.0.0.1,::1 --allow-unix-socket
       - name: Audit installed dependencies
         run: python -m pip_audit --strict
