@@ -98,7 +98,14 @@ docker run -d --name tt_bot \
 
 ### systemd
 
-Скопировать `systemd_bot.service` в `/etc/systemd/system/`, создать `.env` в `/opt/coursework_var18_bot/`:
+Подготовить каталог и окружение (юнит запускает `/opt/coursework_var18_bot/venv/bin/python`), затем создать `.env` в `/opt/coursework_var18_bot/`:
+
+```bash
+sudo mkdir -p /opt/coursework_var18_bot
+cd /opt/coursework_var18_bot
+python3 -m venv venv
+./venv/bin/pip install -r requirements.txt   # requirements.txt из корня репо
+```
 
 ```ini
 BOT_TOKEN=your_token_here
@@ -107,6 +114,7 @@ WORKERS_COUNT=3
 ```
 
 ```bash
+sudo cp deploy/systemd_bot.service /etc/systemd/system/guap_var18_bot.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now guap_var18_bot.service
 ```
