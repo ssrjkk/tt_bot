@@ -6,7 +6,7 @@ Only the latest release is supported with security updates.
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it responsibly.
+If you discover a security vulnerability, please report it through GitHub **Private vulnerability reporting** (Security tab → Report a vulnerability) or by emailing ray013lefe@gmail.com.
 
 **Do NOT open a public issue.**
 
