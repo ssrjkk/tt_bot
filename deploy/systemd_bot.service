@@ -1,15 +1,23 @@
 [Unit]
-Description=GUAP Coursework Var 18 Telegram Task & Monitoring Bot
-After=network.target
+Description=tt_bot — Self-hosted Telegram Endpoint & Task Monitor
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
-User=ubuntu
-WorkingDirectory=/opt/coursework_var18_bot
-EnvironmentFile=/opt/coursework_var18_bot/.env
-ExecStart=/opt/coursework_var18_bot/venv/bin/python -m src.main
+User=ttbot
+Group=ttbot
+WorkingDirectory=/opt/tt_bot
+EnvironmentFile=/opt/tt_bot/.env
+ExecStart=/opt/tt_bot/venv/bin/python -m src.main
 Restart=always
 RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/tt_bot/data
 
 [Install]
 WantedBy=multi-user.target

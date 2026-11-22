@@ -1,0 +1,24 @@
+---
+description: Core engineering, security, testing, and strict notebook-design rules for tt_bot v2.3
+globs: ["src/**/*.py", "tests/**/*.py", "docs/**/*"]
+alwaysApply: true
+---
+
+# tt_bot v2.3 Engineering Rules
+
+## Architecture & Security Invariants
+- Never bypass `EndpointProber` / `_SafeResolver` anti-rebinding SSRF protection unless `ALLOW_PRIVATE_ENDPOINTS=true` is explicitly set.
+- Every task or log query/mutation in `src/database.py` and `src/handlers.py` MUST enforce ownership via `user_id` (IDOR guard).
+- Every user-controlled string rendered with `parse_mode="HTML"` MUST pass through `html.escape()`.
+- Every CSV export MUST neutralize formula prefixes (`=`, `+`, `-`, `@`, `\t`, `\r`) via `_sanitize_csv_cell()`.
+- Every inline button `callback_data` in `src/keyboards.py` MUST have a matching handler in `src/handlers.py`.
+- Keep `ThrottleMiddleware` registered on messages and callbacks, and keep `fallback_message` registered LAST on `router`.
+
+## Code Quality & Offline CI
+- Keep McCabe complexity `<= 10` (`flake8 --max-complexity=10 --max-line-length=120`).
+- Format with `black --line-length=88 src tests`.
+- All pytest tests MUST run strictly offline with `--allow-hosts=127.0.0.1,::1 --allow-unix-socket` and maintain `>= 90%` coverage on `src/`.
+
+## Frontend (`docs/`)
+- Preserve the strict tactile notebook + blueprint identity defined in `docs/DESIGN.md` (hard 2px borders, index tabs, ⌘K command palette, toasts, Zero-CLS static HTML, no React bundler).
+- Keep SEO metadata (`canonical`, `og:url`, `og:image`, `twitter:card`, single `<h1>`, `sitemap.xml`, `robots.txt`) valid on every page.
