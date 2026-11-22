@@ -1,276 +1,1452 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-theme="paper">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>tt_bot — лабораторные сдаются в чате</title>
-<meta name="description" content="tt_bot — Telegram-бот для университетских лабораторных: приём работ в чате, асинхронная очередь проверок и CSV-отчёт для преподавателя. Python · aiogram.">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="SSRJKK">
-<meta property="og:title" content="tt_bot — лабораторные сдаются в чате">
-<meta property="og:description" content="tt_bot — Telegram-бот для университетских лабораторных: приём работ в чате, асинхронная очередь проверок и CSV-отчёт для преподавателя. Python · aiogram.">
-<meta property="og:url" content="https://ssrjkk.github.io/tt_bot/">
-<meta property="og:locale" content="ru_RU">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="tt_bot — лабораторные сдаются в чате">
-<meta name="twitter:description" content="tt_bot — Telegram-бот для университетских лабораторных: приём работ в чате, асинхронная очередь проверок и CSV-отчёт для преподавателя. Python · aiogram.">
-<meta name="twitter:image" content="https://ssrjkk.github.io/tt_bot/og-card.png">
-<meta property="og:image" content="https://ssrjkk.github.io/tt_bot/og-card.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23faf9f6'/%3E%3Ctext x='32' y='42' font-family='Arial' font-size='34' font-weight='bold' fill='%23111111' text-anchor='middle'%3Et%3C/text%3E%3C/svg%3E">
+<title>tt_bot — Инженерный Telegram-монитор сервисов v2.3 — SSRJKK</title>
+<meta name="description" content="Self-hosted Telegram-бот для HTTP/HTTPS, SSL и TCP-мониторинга: anti-rebinding SSRF guard, /add, /incidents, перепроверка упавших, SLA/P95, JSON-логи и CSV-отчёты.">
+<meta name="theme-color" content="#ede6d6">
 <link rel="canonical" href="https://ssrjkk.github.io/tt_bot/">
+<meta property="og:title" content="tt_bot v2.3 — Self-hosted Telegram Endpoint Monitor">
+<meta property="og:description" content="Реальные HTTP/TCP/SSL пробы, anti-rebinding SSRF guard, планировщик, /add, /incidents, SLA 24ч и SQLite WAL в одном Docker-контейнере.">
+<meta property="og:image" content="https://ssrjkk.github.io/tt_bot/og-card.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://ssrjkk.github.io/tt_bot/">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"tt_bot","applicationCategory":"DeveloperApplication","operatingSystem":"Linux, Docker, Python 3.11+","softwareVersion":"2.3.0","license":"https://opensource.org/licenses/MIT","url":"https://ssrjkk.github.io/tt_bot/","codeRepository":"https://github.com/ssrjkk/tt_bot","description":"Self-hosted Telegram bot for HTTP/HTTPS, SSL and TCP endpoint monitoring with anti-rebinding SSRF guard, scheduler, alerts, SLA 24h and CSV export."}
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='3' fill='%23fffdf7' stroke='%231d4ed8' stroke-width='2'/%3E%3Cline x1='10' y1='3' x2='10' y2='29' stroke='%23e16b79' stroke-width='1.6'/%3E%3Cpath d='M13 15l3 3 6-7' fill='none' stroke='%231d4ed8' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=PT+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --desk:#2a2620; --paper:#f6f1e4; --paper-edge:#e9e2cf;
-  --ink:#2b3a67; --ink-soft:#5b6b94; --red:#c94f4f;
-  --sticker-y:#ffe8a3; --sticker-g:#d9edb9; --sticker-b:#cfe3f5;
-  --hand:'Caveat',cursive; --mono:'PT Mono',monospace;
+  --desk:#ebe4d4;
+  --desk-dot:#d2c8b4;
+  --paper:#fffdf7;
+  --sheet-border:#bfb5a0;
+  --stack-1:#e5ddcc;
+  --stack-2:#dad0bc;
+  --stack-3:#cec3ac;
+  --line:#d8e3f2;
+  --margin:#df7d8a;
+  --ink:#111827;
+  --muted:#475467;
+  --pen:#1d4ed8;
+  --pen-dark:#1438a6;
+  --red:#be123c;
+  --green:#0d6e4f;
+  --amber:#b45309;
+  --sticky-yellow:#fff199;
+  --sticky-mint:#cef2de;
+  --sticky-sky:#cfe8ff;
+  --sticky-pink:#ffd6e3;
+  --sticky-ink:#111827;
+  --highlighter:rgba(255,232,90,.62);
+  --card-bg:#ffffff;
+  --code-bg:#0f172a;
+  --code-ink:#e2e8f0;
+  --hard-shadow:3px 3px 0 rgba(17,24,39,.9);
+  --hard-shadow-sm:2px 2px 0 rgba(17,24,39,.85);
+  --ease-spring:cubic-bezier(.22,1.28,.36,1);
+  --ease-ink:cubic-bezier(.22,.9,.3,1);
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+  --hand:'Caveat','Comic Sans MS',cursive;
 }
-*{box-sizing:border-box;margin:0;padding:0}
+html[data-theme="blueprint"]{
+  --desk:#050b16;
+  --desk-dot:#162848;
+  --paper:#0b1930;
+  --sheet-border:#2d538a;
+  --stack-1:#081326;
+  --stack-2:#060f1f;
+  --stack-3:#040a16;
+  --line:rgba(56,189,248,.14);
+  --margin:rgba(251,113,133,.5);
+  --ink:#edf5ff;
+  --muted:#94b0d4;
+  --pen:#38bdf8;
+  --pen-dark:#7dd3fc;
+  --red:#fb7185;
+  --green:#34d399;
+  --amber:#fbbf24;
+  --sticky-yellow:#1c3152;
+  --sticky-mint:#11363c;
+  --sticky-sky:#132a4c;
+  --sticky-pink:#3a1d35;
+  --sticky-ink:#edf5ff;
+  --highlighter:rgba(56,189,248,.22);
+  --card-bg:#0f213d;
+  --code-bg:#060e1d;
+  --code-ink:#dbeafe;
+  --hard-shadow:3px 3px 0 rgba(56,189,248,.45);
+  --hard-shadow-sm:2px 2px 0 rgba(56,189,248,.4);
+}
+
+*{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{
-  background:
-    radial-gradient(1200px 500px at 50% -100px, #38332b 0%, transparent 60%),
-    var(--desk);
+  margin:0;
   color:var(--ink);
-  font:15px/1.75 var(--mono);
-  min-height:100vh;
+  font:400 15.5px/1.6 var(--sans);
+  background-color:var(--desk);
+  background-image:radial-gradient(var(--desk-dot) 1.25px, transparent 1.25px);
+  background-size:20px 20px;
+  padding:28px 24px 80px;
   -webkit-font-smoothing:antialiased;
+  transition:background-color .22s ease,color .2s ease;
 }
-/* ── лист блокнота ─────────────────────────────── */
-.sheet{
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--pen);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- Progress Ribbon ---------- */
+.bookmark-track{position:fixed;top:0;left:0;right:0;height:3px;z-index:60;background:rgba(17,24,39,.1)}
+.bookmark-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--pen),var(--red));transition:width 60ms linear}
+
+/* ---------- Notebook Container + Physical Right Index Tabs ---------- */
+.stage{position:relative;max-width:1100px;margin:0 auto}
+
+.index-tabs{
+  position:fixed;
+  right:14px;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:40;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.index-tab{
+  writing-mode:vertical-rl;
+  text-orientation:mixed;
+  padding:11px 7px;
+  font:700 11px/1 var(--mono);
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  background:var(--card-bg);
+  color:var(--muted);
+  border:2px solid var(--ink);
+  border-radius:6px;
+  box-shadow:var(--hard-shadow-sm);
+  transition:transform .16s var(--ease-spring),background .14s,color .14s;
+}
+.index-tab:hover,.index-tab.active{
+  background:var(--pen);
+  color:#fff;
+  border-color:var(--pen);
+  transform:translateX(-4px);
+}
+html[data-theme="blueprint"] .index-tab:hover,
+html[data-theme="blueprint"] .index-tab.active{color:#060e1d}
+
+.notebook{
   position:relative;
-  max-width:860px;
-  margin:56px auto 0;
-  padding:78px 64px 90px 96px;
-  background:
-    repeating-linear-gradient(180deg, transparent 0 27px, rgba(43,58,103,.12) 27px 28px),
-    linear-gradient(90deg, transparent 0 78px, rgba(201,79,79,.4) 78px 79px, transparent 79px),
-    var(--paper);
-  border-radius:6px 14px 10px 6px;
-  box-shadow:0 30px 80px rgba(0,0,0,.55), 0 4px 14px rgba(0,0,0,.35);
-  transform:rotate(-.35deg);
+  background-color:var(--paper);
+  background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 31px,var(--line) 31px,var(--line) 32px);
+  border:2px solid var(--ink);
+  border-radius:4px 12px 12px 4px;
+  box-shadow:
+    -5px 5px 0 var(--stack-1),
+    -10px 10px 0 var(--stack-2),
+    -15px 15px 0 var(--stack-3),
+    0 26px 56px rgba(0,0,0,.22);
+  padding:28px 44px 52px 102px;
+  overflow:hidden;
 }
-.sheet::before{ /* проколотые дырки */
-  content:"";position:absolute;left:26px;top:110px;bottom:110px;width:16px;
-  background:radial-gradient(circle 8px at 8px 0, var(--desk) 7px, transparent 8px);
-  background-size:16px 120px; background-repeat:repeat-y;
+html[data-theme="blueprint"] .notebook{
+  border-color:var(--sheet-border);
+  background-image:
+    linear-gradient(to right, rgba(56,189,248,.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56,189,248,.14) 1px, transparent 1px);
+  background-size:32px 32px;
 }
-.sheet::after{ /* скрепление сверху */
-  content:"";position:absolute;top:-16px;left:120px;right:120px;height:30px;
-  background:repeating-linear-gradient(90deg, #3c3c3c 0 14px, #232323 14px 22px, #555 22px 24px, #232323 24px 34px);
-  border-radius:17px; box-shadow:0 3px 6px rgba(0,0,0,.4);
+.notebook::before{
+  content:"";position:absolute;top:0;bottom:0;left:76px;
+  width:2px;background:var(--margin);opacity:.85;pointer-events:none;
 }
-.tape{
-  position:absolute;width:120px;height:34px;background:rgba(222,205,166,.75);
-  box-shadow:0 2px 5px rgba(0,0,0,.18);
+.paper-grain{position:absolute;inset:0;width:100%;height:100%;opacity:.035;pointer-events:none;mix-blend-mode:multiply}
+html[data-theme="blueprint"] .paper-grain{opacity:.02;mix-blend-mode:screen}
+
+/* Drafting registration corners & line rail */
+.reg-meta{
+  position:absolute;top:8px;right:16px;z-index:3;
+  font:600 10.5px/1 var(--mono);letter-spacing:.1em;color:var(--muted);opacity:.7;
+  pointer-events:none;
 }
-.tape.tl{top:-14px;left:-30px;transform:rotate(-8deg)}
-.tape.br{bottom:-12px;right:-26px;transform:rotate(6deg)}
-/* ── типографика ───────────────────────────────── */
-h1{
-  font:700 clamp(44px,7vw,76px)/1.08 var(--hand);
-  color:var(--ink); letter-spacing:.5px; margin:18px 0 10px;
+.margin-nums{
+  position:absolute;top:96px;left:46px;width:24px;
+  display:flex;flex-direction:column;gap:0;
+  font:600 10px/32px var(--mono);color:var(--muted);opacity:.48;
+  text-align:right;pointer-events:none;user-select:none;
 }
-h1 .under{position:relative;white-space:nowrap}
-h1 .under svg{position:absolute;left:-2%;bottom:-14px;width:104%;height:22px}
-h1 .under path{stroke:var(--red);stroke-width:3.4;fill:none;stroke-linecap:round}
-.sub{font:16px/1.8 var(--mono);color:var(--ink-soft);max-width:56ch;margin:14px 0 30px}
-.ann{font:600 20px/1.4 var(--hand);color:var(--red);transform:rotate(-1.6deg);display:inline-block}
-/* ── CTA ───────────────────────────────────────── */
-.cta{display:flex;gap:16px;flex-wrap:wrap;margin:34px 0 10px}
+.holes{
+  position:absolute;top:40px;bottom:40px;left:14px;width:28px;
+  display:flex;flex-direction:column;justify-content:space-between;pointer-events:none;
+}
+.hole{
+  position:relative;width:20px;height:20px;border-radius:50%;
+  background:var(--desk);border:2px solid var(--ink);
+  box-shadow:inset 2px 2px 4px rgba(0,0,0,.24);
+}
+html[data-theme="blueprint"] .hole{border-color:var(--sheet-border)}
+.hole::after{
+  content:"";position:absolute;left:-16px;top:5px;width:24px;height:6px;border-radius:999px;
+  background:linear-gradient(180deg,#64748b,#0f172a 65%,#64748b);
+}
+
+/* ---------- Header ---------- */
+.sheet-head{
+  position:relative;z-index:4;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:8px 0 16px;border-bottom:2px solid var(--ink);
+}
+html[data-theme="blueprint"] .sheet-head{border-bottom-color:var(--sheet-border)}
+.brand{display:inline-flex;align-items:center;gap:10px}
+.brand-name{font:800 22px/1 var(--mono);color:var(--pen);letter-spacing:-.6px}
+.rubber-stamp{
+  font:700 11px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;
+  color:var(--red);border:2px solid var(--red);padding:4px 8px;border-radius:3px;
+  transform:rotate(-2.5deg);
+}
+.nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font:600 13.5px/1 var(--sans)}
+.nav a.nav-link{color:var(--muted);padding:6px 4px}
+.nav a.nav-link:hover{color:var(--pen);text-decoration:underline;text-underline-offset:4px}
+
+.ctrl-pill{
+  display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;
+  border:2px solid var(--ink);border-radius:6px;
+  background:var(--card-bg);color:var(--ink);
+  font:700 11.5px/1 var(--mono);box-shadow:var(--hard-shadow-sm);
+  transition:transform .12s var(--ease-spring),background .12s;
+}
+html[data-theme="blueprint"] .ctrl-pill{border-color:var(--sheet-border)}
+.ctrl-pill:hover{transform:translate(-1px,-1px);border-color:var(--pen);color:var(--pen)}
+.ctrl-pill[aria-pressed="true"]{background:var(--pen);color:#fff;border-color:var(--pen)}
+html[data-theme="blueprint"] .ctrl-pill[aria-pressed="true"]{color:#060e1d}
+.kbd{
+  display:inline-block;padding:2px 5px;border-radius:3px;
+  background:rgba(128,128,128,.16);font:700 10.5px/1 var(--mono);
+}
+
+.ink-picker{
+  display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 8px;
+  border:2px solid var(--ink);border-radius:6px;background:var(--card-bg);
+}
+html[data-theme="blueprint"] .ink-picker{border-color:var(--sheet-border)}
+.ink-dot{width:14px;height:14px;border-radius:50%;border:2px solid transparent;padding:0;transition:transform .14s var(--ease-spring)}
+.ink-dot:hover{transform:scale(1.2)}
+.ink-dot[aria-pressed="true"]{border-color:var(--ink);transform:scale(1.15)}
+
+.ic{width:15px;height:15px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- Hero ---------- */
+.hero{
+  position:relative;z-index:2;
+  display:grid;grid-template-columns:1.38fr .82fr;
+  gap:28px;align-items:start;padding:30px 0 22px;
+}
+.spec-tag{
+  display:inline-flex;align-items:center;gap:8px;
+  font:700 12px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;
+  color:var(--pen);background:rgba(29,78,216,.08);
+  border:1.5px solid var(--pen);padding:5px 10px;border-radius:4px;
+}
+h1{margin:14px 0 14px;font-size:clamp(30px,4.1vw,46px);font-weight:800;line-height:1.1;letter-spacing:-.03em}
+.hl{background:linear-gradient(180deg,transparent 55%,var(--highlighter) 55%,var(--highlighter) 92%,transparent 92%);padding:0 3px}
+.pen-underline{position:relative;display:inline-block;color:var(--pen)}
+.pen-underline svg{position:absolute;left:-2px;right:-2px;bottom:-9px;width:calc(100% + 4px);height:12px;pointer-events:none}
+.pen-underline path{stroke-dasharray:280;stroke-dashoffset:280;animation:drawInk 1s var(--ease-ink) .15s forwards}
+@keyframes drawInk{to{stroke-dashoffset:0}}
+
+.lead{margin:0;font-size:15.8px;color:var(--muted);max-width:600px}
+.lead code{font:600 13px/1 var(--mono);background:rgba(56,189,248,.14);color:var(--pen-dark);padding:2px 6px;border-radius:4px}
+
+.cta-row{margin-top:22px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .btn{
-  display:inline-block;padding:13px 26px;font:600 17px var(--hand);
-  color:var(--ink);text-decoration:none;border:2.4px solid var(--ink);
-  border-radius:14px 4px 12px 5px;transform:rotate(-1deg);
-  background:rgba(255,255,255,.35);
+  display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 18px;border-radius:6px;
+  font:700 14px/1 var(--sans);border:2px solid var(--ink);
+  box-shadow:var(--hard-shadow);
+  transition:transform .14s var(--ease-spring),box-shadow .14s var(--ease-spring);
 }
-.btn.solid{background:var(--ink);color:var(--paper);transform:rotate(1deg)}
-.btn:hover{transform:rotate(0) translateY(-2px);transition:.18s}
-/* ── стикеры ───────────────────────────────────── */
-.notes{display:flex;gap:20px;flex-wrap:wrap;margin:44px 0 8px}
-.note{
-  width:196px;padding:16px 16px 20px;font:600 18px/1.35 var(--hand);
-  color:#4a4133;box-shadow:0 10px 20px rgba(0,0,0,.25);
-  position:relative;
+.btn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 rgba(17,24,39,.9)}
+.btn:active{transform:translate(1px,1px);box-shadow:1px 1px 0 rgba(17,24,39,.9)}
+.btn-ink{background:var(--pen);border-color:var(--ink);color:#fff}
+html[data-theme="blueprint"] .btn-ink{color:#060e1d;border-color:var(--pen)}
+.btn-paper{background:var(--card-bg);color:var(--ink)}
+html[data-theme="blueprint"] .btn-paper{border-color:var(--sheet-border)}
+
+.shortcut-bar{
+  margin-top:16px;display:flex;gap:14px;flex-wrap:wrap;
+  font:600 11.5px/1 var(--mono);color:var(--muted);
 }
-.note b{display:block;font-size:30px;line-height:1.1;margin-bottom:6px;color:var(--ink)}
-.note:nth-child(1){background:var(--sticker-y);transform:rotate(-2.4deg)}
-.note:nth-child(2){background:var(--sticker-g);transform:rotate(1.6deg);margin-top:14px}
-.note:nth-child(3){background:var(--sticker-b);transform:rotate(-1.2deg);margin-top:6px}
-.note i{position:absolute;top:-10px;left:50%;margin-left:-40px;width:80px;height:22px;background:rgba(222,205,166,.8);box-shadow:0 2px 4px rgba(0,0,0,.15);transform:rotate(-3deg)}
-/* ── развороты-секции ──────────────────────────── */
-.spread{margin-top:74px}
-.spread h2{
-  font:700 34px/1.15 var(--hand);color:var(--ink);margin-bottom:6px;
-  display:inline-block;position:relative;
+.shortcut-bar span{display:inline-flex;align-items:center;gap:5px}
+
+/* ---------- Hard-Edged Sticky Notes ---------- */
+.sticky{
+  position:relative;padding:18px 18px 16px;border-radius:3px 3px 12px 3px;
+  background:var(--sticky-yellow);color:var(--sticky-ink);
+  border:2px solid var(--ink);box-shadow:var(--hard-shadow);
+  transform:rotate(1deg);
+  transition:transform .2s var(--ease-spring),box-shadow .2s;
 }
-.spread h2 svg{position:absolute;left:0;bottom:-8px;width:100%;height:14px}
-.spread h2 path{stroke:var(--ink);stroke-width:2.6;fill:none;stroke-linecap:round;opacity:.75}
-.num{font:600 15px var(--hand);color:var(--red);display:block;margin-bottom:2px}
-p.lead{max-width:60ch;margin:12px 0 8px}
-/* ── чек-лист ──────────────────────────────────── */
-.check{list-style:none;margin:18px 0 0;max-width:64ch}
-.check li{position:relative;padding:6px 0 6px 44px;font:16px/1.6 var(--mono)}
-.check .box{position:absolute;left:0;top:8px;width:26px;height:26px;border:2.4px solid var(--ink);border-radius:5px 2px 6px 3px;background:rgba(255,255,255,.4)}
-.check .box svg{width:100%;height:100%}
-.check .box path{stroke:var(--red);stroke-width:3.2;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;stroke-dashoffset:40}
-.check .txt{opacity:.25;transition:.3s}
-.check li.done .txt{opacity:1}
-/* ── стат-строка как на полях ──────────────────── */
-.fields{display:flex;gap:34px;flex-wrap:wrap;margin:22px 0 6px}
-.field{font:14px/1.5 var(--mono);color:var(--ink-soft)}
-.field b{display:block;font:700 42px/1 var(--hand);color:var(--ink)}
-/* ── отрыв листа ───────────────────────────────── */
-.tear{position:relative;height:26px;margin:80px -64px 0 -96px}
-.tear svg{position:absolute;inset:0;width:100%;height:26px}
-.tear path{fill:var(--paper-edge)}
-/* ── подвал ────────────────────────────────────── */
-footer{
-  max-width:860px;margin:26px auto 70px;padding:0 40px;
-  display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
-  font:600 18px var(--hand);color:#cfc8b6;
+html[data-theme="blueprint"] .sticky{border-color:var(--sheet-border)}
+.sticky:hover{transform:rotate(0deg) translate(-2px,-3px)}
+.sticky::before{
+  content:"";position:absolute;top:-11px;left:50%;transform:translateX(-50%) rotate(-1.5deg);
+  width:72px;height:18px;background:rgba(255,255,255,.68);
+  border:1px solid rgba(17,24,39,.22);
 }
-footer a{color:#f6f1e4;text-decoration:none;border-bottom:1.5px dashed #8a8578}
-footer a:hover{border-bottom-color:#f6f1e4}
-/* ── адаптив ───────────────────────────────────── */
-@media(max-width:720px){
-  .sheet{margin:34px 14px 0;padding:64px 26px 70px 62px}
-  .sheet::before{left:14px}
-  .sheet::after{left:40px;right:40px}
-  .tear{margin:70px -26px 0 -62px}
-  .note{width:calc(50% - 12px)}
+html[data-theme="blueprint"] .sticky::before{background:rgba(56,189,248,.22);border-color:rgba(56,189,248,.4)}
+.paperclip{position:absolute;top:-18px;right:16px;width:26px;height:46px;pointer-events:none}
+.sticky.mint{background:var(--sticky-mint);transform:rotate(-1deg)}
+.sticky.sky{background:var(--sticky-sky);transform:rotate(.8deg)}
+.sticky.pink{background:var(--sticky-pink);transform:rotate(-.8deg)}
+.sticky.mint:hover,.sticky.sky:hover,.sticky.pink:hover{transform:rotate(0deg) translate(-2px,-3px)}
+.sticky h3{margin:0 0 6px;font-size:15.5px;font-weight:800}
+.sticky .hand-note{font:700 20px/1.1 var(--hand);color:var(--pen);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center}
+.sticky ul{margin:0;padding-left:18px;font-size:13.5px}
+.sticky li{margin:4px 0}
+.sticky code{font:600 11.8px/1.3 var(--mono);background:rgba(0,0,0,.09);padding:1px 5px;border-radius:3px}
+.sticky-interactive{cursor:pointer;text-align:left;width:100%}
+.sticky-code{
+  display:none;margin-top:10px;padding:10px 12px;background:var(--code-bg);color:var(--code-ink);
+  border-radius:5px;border:1px solid rgba(255,255,255,.12);
+  font:500 11.5px/1.45 var(--mono);white-space:pre-wrap;
+}
+.sticky-interactive[aria-expanded="true"] .sticky-code{display:block}
+.sticky-hint{font:700 11px/1 var(--mono);opacity:.78}
+
+/* ---------- Sections ---------- */
+.sec{position:relative;z-index:2;margin-top:46px;opacity:0;transform:translateY(12px);transition:opacity .42s var(--ease-ink),transform .42s var(--ease-ink)}
+.sec.visible{opacity:1;transform:none}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;border-bottom:1.5px dashed var(--sheet-border);padding-bottom:8px}
+.sec-num{font:800 14px/1 var(--mono);color:#fff;background:var(--ink);padding:3px 7px;border-radius:4px;margin-right:8px;vertical-align:2px}
+html[data-theme="blueprint"] .sec-num{background:var(--pen);color:#060e1d}
+h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.margin-doodle{font:700 19px/1 var(--hand);color:var(--pen)}
+.stickies-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:18px}
+.stickies-grid p{margin:0;font-size:13.5px;opacity:.92}
+
+/* ---------- Architecture Pipeline Sketch ---------- */
+.sketch-box{background:var(--card-bg);border:2px solid var(--ink);border-radius:8px;padding:16px;box-shadow:var(--hard-shadow)}
+html[data-theme="blueprint"] .sketch-box{border-color:var(--sheet-border)}
+.sketch-flow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.sketch-node{
+  text-align:left;background:var(--paper);color:var(--ink);
+  border:2px solid var(--ink);border-radius:6px;padding:10px 11px;
+  transition:transform .14s var(--ease-spring),background .14s,border-color .14s;
+}
+html[data-theme="blueprint"] .sketch-node{border-color:var(--sheet-border)}
+.sketch-node:hover,.sketch-node[aria-pressed="true"]{
+  border-color:var(--pen);background:rgba(29,78,216,.07);
+  transform:translate(-1px,-2px);box-shadow:var(--hard-shadow-sm);
+}
+.sketch-node b{display:block;font:700 12px/1.2 var(--mono);color:var(--pen);margin-bottom:4px}
+.sketch-node span{display:block;font-size:11.8px;color:var(--muted);line-height:1.35}
+.sketch-note{
+  margin:14px 0 0;padding:11px 14px;border-left:4px solid var(--pen);
+  background:rgba(29,78,216,.06);border-radius:0 6px 6px 0;font-size:13.5px;
+}
+.sketch-note code{font:600 12px/1.3 var(--mono);color:var(--pen)}
+
+/* ---------- Interactive Checklist + Row Inspector ---------- */
+.pad-form{
+  display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 12px;
+  border-radius:8px;background:var(--card-bg);border:2px solid var(--ink);box-shadow:var(--hard-shadow-sm);
+}
+html[data-theme="blueprint"] .pad-form{border-color:var(--sheet-border)}
+.pad-form input{
+  flex:1;min-width:210px;background:transparent;color:var(--ink);
+  border:0;border-bottom:2px solid var(--line);padding:6px 4px;
+  font:600 13px/1.2 var(--mono);
+}
+.pad-chip{
+  background:var(--paper);border:1.5px solid var(--ink);color:var(--ink);
+  border-radius:5px;padding:5px 9px;font:700 11.2px/1 var(--mono);
+}
+html[data-theme="blueprint"] .pad-chip{border-color:var(--sheet-border)}
+.pad-chip:hover{border-color:var(--pen);color:var(--pen)}
+
+.checklist-wrap{display:grid;grid-template-columns:1.35fr .85fr;gap:22px;align-items:start}
+.pen-list{list-style:none;margin:0;padding:0;border:2px solid var(--ink);border-radius:8px;background:var(--card-bg);overflow:hidden;box-shadow:var(--hard-shadow)}
+html[data-theme="blueprint"] .pen-list{border-color:var(--sheet-border)}
+.pen-item{border-bottom:1.5px dashed var(--line)}
+.pen-item:last-child{border-bottom:0}
+.pen-row-btn{
+  width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;
+  background:transparent;border:0;color:inherit;text-align:left;
+  transition:background .14s;
+}
+.pen-row-btn:hover{background:rgba(29,78,216,.05)}
+.pen-item.selected .pen-row-btn{background:rgba(29,78,216,.09)}
+.check-box{
+  width:24px;height:24px;flex:none;border:2px solid var(--ink);border-radius:4px;
+  display:grid;place-items:center;background:var(--paper);
+}
+.check-box svg{width:19px;height:19px}
+.check-stroke{stroke-dasharray:40;stroke-dashoffset:40;animation:drawCheck .3s var(--ease-spring) forwards}
+@keyframes drawCheck{to{stroke-dashoffset:0}}
+.pen-main{min-width:0;flex:1}
+.pen-ep{font:700 13px/1.25 var(--mono);color:var(--ink);word-break:break-all}
+.pen-sub{font-size:11.8px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
+.strip{display:inline-flex;gap:2px}
+.strip i{width:7px;height:11px;border-radius:2px;display:block}
+.strip i.ok{background:#16a34a}
+.strip i.fail{background:#e11d48}
+.pen-item[data-state="ok"] .pen-ep{color:var(--green)}
+.pen-item[data-state="fail"] .pen-ep{color:var(--red);text-decoration:line-through}
+.pen-lat{
+  margin-left:auto;font:700 13px/1 var(--mono);color:var(--pen);
+  padding:4px 8px;border-radius:4px;background:rgba(29,78,216,.08);white-space:nowrap;
+}
+.pen-item[data-state="fail"] .pen-lat{color:var(--red);background:rgba(190,18,60,.12)}
+
+/* Inline Row Diagnostic Drawer */
+.row-drawer{
+  display:none;padding:10px 14px 12px 47px;
+  background:rgba(17,24,39,.035);border-top:1px dashed var(--line);
+  font:500 12px/1.5 var(--mono);color:var(--muted);
+}
+html[data-theme="blueprint"] .row-drawer{background:rgba(56,189,248,.05)}
+.pen-item.selected .row-drawer{display:block}
+.drawer-actions{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+.drawer-btn{
+  padding:4px 9px;border:1.5px solid var(--ink);border-radius:4px;
+  background:var(--card-bg);color:var(--ink);font:700 11px/1 var(--mono);
+}
+.drawer-btn:hover{border-color:var(--pen);color:var(--pen)}
+.drawer-btn.danger:hover{border-color:var(--red);color:var(--red)}
+
+.check-controls{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hand-log{margin:10px 0 0;font:700 19px/1.2 var(--hand);color:var(--pen)}
+
+/* ---------- Right Column: Alert + Millimeter Graph + Telemetry ---------- */
+.tg-note{
+  background:var(--card-bg);border:2px solid var(--ink);border-radius:8px;
+  padding:14px;box-shadow:var(--hard-shadow);
+}
+html[data-theme="blueprint"] .tg-note{border-color:var(--sheet-border)}
+.tg-note.is-alert{border-color:var(--red);box-shadow:3px 3px 0 rgba(190,18,60,.45)}
+.tg-note-head{display:flex;justify-content:space-between;align-items:center;font:700 11.5px/1 var(--mono);color:var(--muted);margin-bottom:8px}
+.tg-note-body{font-size:13.4px}
+.tg-note-body code{font:600 11.8px/1.3 var(--mono);background:rgba(56,189,248,.12);padding:1px 5px;border-radius:3px}
+
+.graph-card{
+  margin-top:14px;padding:12px 14px;border-radius:8px;border:2px solid var(--ink);
+  background-color:var(--card-bg);box-shadow:var(--hard-shadow);
+  background-image:
+    linear-gradient(to right, rgba(29,78,216,.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(29,78,216,.08) 1px, transparent 1px);
+  background-size:14px 14px;
+}
+html[data-theme="blueprint"] .graph-card{border-color:var(--sheet-border)}
+.graph-head{display:flex;justify-content:space-between;font:700 11px/1 var(--mono);color:var(--muted);margin-bottom:6px}
+.graph-svg{width:100%;height:86px;display:block;overflow:visible}
+.graph-pt{cursor:pointer;transition:r .12s}
+.graph-pt:hover{r:5}
+
+.sla-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.sla-pill{
+  background:var(--sticky-sky);color:var(--sticky-ink);
+  border:2px solid var(--ink);border-radius:6px;padding:9px 10px;box-shadow:var(--hard-shadow-sm);
+}
+html[data-theme="blueprint"] .sla-pill{border-color:var(--sheet-border)}
+.sla-pill b{display:block;font:800 16px/1.2 var(--mono)}
+.sla-pill span{font:600 10.5px/1 var(--mono);opacity:.82;text-transform:uppercase}
+
+/* ---------- Code Tabs ---------- */
+.tab-bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.tab-btn{
+  background:var(--card-bg);border:2px solid var(--ink);border-radius:6px;
+  padding:7px 12px;font:700 12.5px/1 var(--mono);color:var(--muted);
+}
+html[data-theme="blueprint"] .tab-btn{border-color:var(--sheet-border)}
+.tab-btn[aria-selected="true"]{background:var(--ink);color:var(--paper);box-shadow:var(--hard-shadow-sm)}
+html[data-theme="blueprint"] .tab-btn[aria-selected="true"]{background:var(--pen);color:#060e1d;border-color:var(--pen)}
+.code-card{background:var(--code-bg);color:var(--code-ink);border:2px solid var(--ink);border-radius:8px;padding:16px 18px;box-shadow:var(--hard-shadow)}
+.code-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font:600 12px/1 var(--mono);color:#94a3b8}
+.copy-btn{display:inline-flex;align-items:center;gap:6px;background:#1e293b;color:#fff;border:1.5px solid #475569;border-radius:5px;padding:5px 11px;font:700 12px/1 var(--mono)}
+.copy-btn:hover{background:var(--pen);border-color:var(--pen)}
+pre{margin:0;overflow-x:auto;font:500 13px/1.6 var(--mono)}
+
+/* ---------- Footer ---------- */
+.sheet-foot{
+  position:relative;z-index:2;margin-top:44px;padding-top:16px;
+  border-top:2px solid var(--ink);
+  display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+  font-size:13.5px;color:var(--muted);
+}
+html[data-theme="blueprint"] .sheet-foot{border-top-color:var(--sheet-border)}
+.sheet-foot a{color:var(--pen);font-weight:600}
+.sheet-foot a:hover{text-decoration:underline}
+.raven-sig{display:inline-flex;align-items:center;gap:8px;font:700 19px/1 var(--hand);color:var(--pen)}
+.raven-sig svg{width:26px;height:26px}
+
+/* ---------- Command Palette Modal (⌘K) ---------- */
+.cmdk-backdrop{
+  position:fixed;inset:0;z-index:90;background:rgba(10,15,28,.62);backdrop-filter:blur(4px);
+  display:none;align-items:flex-start;justify-content:center;padding:11vh 16px 24px;
+}
+.cmdk-backdrop.open{display:flex}
+.cmdk-dialog{
+  width:100%;max-width:540px;background:var(--paper);color:var(--ink);
+  border:2px solid var(--ink);border-radius:10px;box-shadow:6px 6px 0 rgba(17,24,39,.9);overflow:hidden;
+}
+html[data-theme="blueprint"] .cmdk-dialog{border-color:var(--pen);box-shadow:6px 6px 0 rgba(56,189,248,.4)}
+.cmdk-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:2px solid var(--ink)}
+html[data-theme="blueprint"] .cmdk-head{border-bottom-color:var(--sheet-border)}
+.cmdk-head input{flex:1;border:0;background:transparent;color:var(--ink);font:600 14.5px/1.2 var(--mono);outline:none}
+.cmdk-list{list-style:none;margin:0;padding:6px;max-height:320px;overflow-y:auto}
+.cmdk-item{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 12px;border:0;border-radius:6px;background:transparent;color:var(--ink);
+  text-align:left;font:600 13.5px/1.2 var(--sans);
+}
+.cmdk-item.active,.cmdk-item:hover{background:var(--pen);color:#fff}
+html[data-theme="blueprint"] .cmdk-item.active,
+html[data-theme="blueprint"] .cmdk-item:hover{color:#060e1d}
+.cmdk-foot{padding:8px 14px;border-top:1px dashed var(--sheet-border);font:600 11px/1 var(--mono);color:var(--muted);display:flex;justify-content:space-between}
+
+/* ---------- Toast Stack ---------- */
+.toast-stack{position:fixed;right:18px;bottom:18px;z-index:85;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{
+  pointer-events:auto;background:var(--card-bg);color:var(--ink);
+  border:2px solid var(--ink);border-left:5px solid var(--pen);border-radius:6px;
+  padding:9px 13px;font:600 12.5px/1.3 var(--mono);box-shadow:var(--hard-shadow-sm);
+  animation:toastIn .2s var(--ease-spring);
+}
+.toast.err{border-left-color:var(--red)}
+.toast.ok{border-left-color:var(--green)}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+
+/* ---------- Strict Top Telemetry Strip (v2.3) ---------- */
+.telemetry-strip{
+  position:relative;z-index:4;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:7px 12px;margin-bottom:14px;
+  background:var(--code-bg);color:var(--code-ink);
+  border:2px solid var(--ink);border-radius:6px;
+  font:700 11px/1 var(--mono);letter-spacing:.05em;text-transform:uppercase;
+}
+html[data-theme="blueprint"] .telemetry-strip{border-color:var(--sheet-border)}
+.tel-group{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.tel-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;box-shadow:0 0 0 2px rgba(34,197,94,.28)}
+.tel-dot.alert{background:#f43f5e;box-shadow:0 0 0 2px rgba(244,63,94,.32)}
+.tel-btn{
+  background:transparent;color:#93c5fd;border:1px solid rgba(147,197,253,.35);
+  border-radius:4px;padding:3px 7px;font:700 10.5px/1 var(--mono);
+}
+.tel-btn:hover{background:var(--pen);color:#fff;border-color:var(--pen)}
+
+/* ---------- Animated Architecture Signal Bus ---------- */
+.bus-svg{width:100%;height:18px;display:block;margin-top:10px}
+.bus-flow{stroke-dasharray:6 6;animation:busMove 1.1s linear infinite}
+@keyframes busMove{to{stroke-dashoffset:-24}}
+
+/* ---------- Checklist Filter & CSV Bar ---------- */
+.filter-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+  margin-bottom:10px;
+}
+.filter-pills{display:flex;gap:6px;flex-wrap:wrap}
+.flt-btn{
+  padding:5px 10px;border:2px solid var(--ink);border-radius:5px;
+  background:var(--card-bg);color:var(--muted);font:700 11.5px/1 var(--mono);
+}
+html[data-theme="blueprint"] .flt-btn{border-color:var(--sheet-border)}
+.flt-btn[aria-pressed="true"]{background:var(--ink);color:var(--paper);box-shadow:var(--hard-shadow-sm)}
+html[data-theme="blueprint"] .flt-btn[aria-pressed="true"]{background:var(--pen);color:#060e1d;border-color:var(--pen)}
+
+/* ---------- Hotkeys Reference Table inside Modal ---------- */
+.hk-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px}
+.hk-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:8px 10px;border:1.5px dashed var(--sheet-border);border-radius:6px;
+  font:600 12.5px/1.2 var(--sans);
+}
+@media(max-width:600px){.hk-grid{grid-template-columns:1fr}}
+
+@media(max-width:1180px){.index-tabs{display:none}}
+@media(max-width:900px){
+  body{padding:14px 10px 60px}
+  .notebook{padding:22px 18px 40px 52px}
+  .notebook::before{left:36px}
+  .margin-nums{display:none}
+  .holes{left:8px}
+  .hole{width:15px;height:15px}
+  .hole::after{display:none}
+  .hero,.checklist-wrap,.stickies-grid,.sketch-flow{grid-template-columns:1fr}
+  .tel-btn,.brand,.pad-chip,.drawer-btn{min-height:24px}
+  .pad-chip{padding:6px 10px}
+  .ink-dot{width:24px;height:24px}
+  footer a{display:inline-block;min-height:24px;padding:4px 2px}
 }
 @media(prefers-reduced-motion:reduce){
-  *{animation:none!important;transition:none!important}
   html{scroll-behavior:auto}
+  .sec{opacity:1;transform:none}
+  .pen-underline path,.check-stroke{animation:none;stroke-dashoffset:0}
+  .bus-flow{animation:none}
+  *,*::before,*::after{transition:none!important;animation:none!important}
 }
 </style>
 </head>
 <body>
+<div class="bookmark-track" aria-hidden="true"><div class="bookmark-fill" id="bm-fill"></div></div>
 
-<div class="sheet">
-  <span class="tape tl"></span><span class="tape br"></span>
+<!-- Right-edge Physical Notebook Index Tabs -->
+<nav class="index-tabs" aria-label="Закладки блокнота">
+  <a class="index-tab active" href="#top" data-sec="top">00 Обложка</a>
+  <a class="index-tab" href="#sketch" data-sec="sketch">01 Схема</a>
+  <a class="index-tab" href="#checklist" data-sec="checklist">02 Прогон</a>
+  <a class="index-tab" href="#start" data-sec="start">03 Деплой</a>
+  <a class="index-tab" href="./showcase/">04 Витрина ↗</a>
+</nav>
 
-  <header>
-    <span class="ann">курс работы · ГУАП · var18</span>
-    <h1>Лабораторные <span class="under">сдаются в чате<svg viewBox="0 0 300 22" preserveAspectRatio="none"><path d="M4 14 C 60 4, 120 20, 180 10 S 280 6, 296 12"/></svg></span></h1>
-    <p class="sub">tt_bot — Telegram-бот для студентов: принимает лабораторные, ведёт статусы,
-    напоминает о дедлайнах и следит за URL. Приёмка через FSM — бот не теряет состояние
-    между шагами, а преподавателю уходит CSV-отчёт.</p>
-    <div class="cta">
-      <a class="btn solid" href="https://github.com/ssrjkk/tt_bot">Открыть репозиторий →</a>
-      <a class="btn" href="https://github.com/ssrjkk/tt_bot#readme">Как поднять за 5 минут</a>
+<div class="stage" id="top">
+  <div class="notebook">
+    <svg class="paper-grain" aria-hidden="true">
+      <filter id="paperNoise"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/></filter>
+      <rect width="100%" height="100%" filter="url(#paperNoise)"/>
+    </svg>
+
+    <div class="reg-meta" aria-hidden="true">+ REV 2.3 · SPEC-18 · ZERO-CLS +</div>
+    <div class="margin-nums" aria-hidden="true" id="margin-nums"></div>
+
+    <div class="holes" aria-hidden="true">
+      <span class="hole"></span><span class="hole"></span><span class="hole"></span>
+      <span class="hole"></span><span class="hole"></span><span class="hole"></span>
     </div>
-  </header>
 
-  <div class="notes">
-    <div class="note"><i></i><b>24</b>теста · 96% покрытия, гейт 90% в CI</div>
-    <div class="note"><i></i><b>WAL</b>«database is locked»? не слышал</div>
-    <div class="note"><i></i><b>3</b>индекса: задачи, статусы, логи</div>
+    <div class="telemetry-strip" role="status" aria-live="polite">
+      <div class="tel-group">
+        <span><i class="tel-dot" id="tel-dot"></i> SYS: <b id="tel-sys">NOMINAL</b></span>
+        <span class="num">MONITORS: <b id="tel-cnt">4</b></span>
+        <span class="num">SLA: <b id="tel-sla">100.0%</b></span>
+      </div>
+      <div class="tel-group">
+        <span>MODE: <b id="tel-mode">PAPER</b></span>
+        <button class="tel-btn" id="hk-open" type="button" title="Справка по горячим клавишам (?)">? HOTKEYS</button>
+      </div>
+    </div>
+
+    <header class="sheet-head">
+      <a class="brand" href="./">
+        <span class="brand-name">tt_bot</span>
+        <span class="rubber-stamp">v2.3 · strict</span>
+      </a>
+      <nav class="nav" aria-label="Навигация">
+        <a class="nav-link" href="#sketch">Схема</a>
+        <a class="nav-link" href="#checklist">Чек-лист</a>
+        <a class="nav-link" href="#start">Деплой</a>
+        <button class="ctrl-pill" id="cmdk-open" type="button" title="Командная палитра (Ctrl+K / ⌘K)">
+          <span>Палитра</span><span class="kbd">⌘K</span>
+        </button>
+        <button class="ctrl-pill" id="theme-toggle" type="button" aria-pressed="false" title="Переключить: Блокнот / Чертёж (T)">
+          <span id="theme-label">📐 Чертёж</span>
+        </button>
+        <div class="ink-picker" role="group" aria-label="Цвет чернил ручки">
+          <button class="ink-dot" type="button" data-ink="#1d4ed8" data-ink-dark="#1438a6" style="background:#1d4ed8" aria-label="Синяя ручка" aria-pressed="true" title="Синяя шариковая"></button>
+          <button class="ink-dot" type="button" data-ink="#111827" data-ink-dark="#030712" style="background:#111827" aria-label="Чёрный линер" aria-pressed="false" title="Чёрный линер"></button>
+          <button class="ink-dot" type="button" data-ink="#0d6e4f" data-ink-dark="#084c36" style="background:#0d6e4f" aria-label="Зелёная ручка" aria-pressed="false" title="Изумрудный маркер"></button>
+        </div>
+        <button class="ctrl-pill" id="sound-toggle" type="button" aria-pressed="false" title="Тихий клик ручки">
+          <span id="sound-label">SFX off</span>
+        </button>
+        <a class="ctrl-pill" href="./showcase/" style="border-color:var(--pen);color:var(--pen)">
+          Витрина →
+        </a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <span class="spec-tag">Python 3.12 · aiogram 3 · aiohttp · SQLite WAL · Offline CI</span>
+          <h1>
+            Мониторинг сервисов в Telegram —
+            <span class="pen-underline">как инженерный блокнот
+              <svg viewBox="0 0 260 14" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M3 10 Q 75 2, 145 8 T 257 6" fill="none" stroke="#be123c" stroke-width="3.2" stroke-linecap="round"/>
+              </svg>
+            </span>
+          </h1>
+          <p class="lead">
+            <code>tt_bot</code> — self-hosted бот для <span class="hl">реальных HTTP/HTTPS, SSL и TCP-проверок</span>.
+            Однострочное добавление <code>/add</code>, лента <code>/incidents</code> с ретраем упавших, шкала <code>🟩🟩🟥🟩🟩</code>, anti-rebinding SSRF guard, <code>ThrottleMiddleware</code> и экспорт CSV без SaaS-подписок.
+          </p>
+          <div class="cta-row">
+            <a class="btn btn-ink" href="./showcase/">
+              <svg class="ic" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+              Открыть витрину-симулятор
+            </a>
+            <a class="btn btn-paper" href="https://github.com/ssrjkk/tt_bot">
+              <svg class="ic" viewBox="0 0 24 24"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+              GitHub репозиторий
+            </a>
+          </div>
+          <div class="shortcut-bar" aria-label="Горячие клавиши">
+            <span><span class="kbd">⌘K</span> палитра</span>
+            <span><span class="kbd">R</span> прогон проверок</span>
+            <span><span class="kbd">T</span> блокнот / чертёж</span>
+            <span><span class="kbd">I</span> чернила</span>
+            <span><span class="kbd">1-5</span> узлы</span>
+            <span><span class="kbd">?</span> шпаргалка</span>
+          </div>
+        </div>
+
+        <aside class="sticky" aria-label="Спецификация v2.3">
+          <svg class="paperclip" viewBox="0 0 32 56" fill="none" aria-hidden="true">
+            <path d="M10 18V42a8 8 0 0 0 16 0V12a6 6 0 0 0-12 0v26a3.5 3.5 0 0 0 7 0V16" stroke="#475569" stroke-width="2.6" stroke-linecap="round"/>
+          </svg>
+          <p class="hand-note"><span>Что внутри v2.3:</span><span>✓</span></p>
+          <ul>
+            <li><code>HTTP + TCP + SSL</code> + body check</li>
+            <li><code>_SafeResolver</code> anti-rebinding SSRF</li>
+            <li><code>/add</code>, <code>/incidents</code>, <code>Ретрай упавших</code></li>
+            <li>SLA 24ч на карточке + порог алертов 1..3</li>
+            <li><code>ThrottleMiddleware</code> + JSON-логи</li>
+            <li>IDOR + HTML + CSV + fallback без тупиков</li>
+          </ul>
+        </aside>
+      </section>
+
+      <section class="sec" id="sketch">
+        <div class="sec-head">
+          <h2><span class="sec-num">01</span> Набросок архитектуры</h2>
+          <span class="margin-doodle">← кликни любой узел или стикер</span>
+        </div>
+        <div class="sketch-box">
+          <div class="sketch-flow" role="group" aria-label="Узлы архитектуры">
+            <button class="sketch-node" type="button" aria-pressed="true" data-node="router">
+              <b>1. Router + Throttle</b>
+              <span>aiogram 3 · IDOR · anti-flood 0.4s</span>
+            </button>
+            <button class="sketch-node" type="button" aria-pressed="false" data-node="pool">
+              <b>2. WorkerPool</b>
+              <span>Queue · Run All · Retry Failed</span>
+            </button>
+            <button class="sketch-node" type="button" aria-pressed="false" data-node="prober">
+              <b>3. EndpointProber</b>
+              <span>HTTP · TCP · SSL · _SafeResolver</span>
+            </button>
+            <button class="sketch-node" type="button" aria-pressed="false" data-node="db">
+              <b>4. SQLite WAL</b>
+              <span>auto-migrate · per-task SLA · P95</span>
+            </button>
+            <button class="sketch-node" type="button" aria-pressed="false" data-node="alerts">
+              <b>5. Scheduler + Alerts</b>
+              <span>1/5/15m · порог 1..3 · recovery</span>
+            </button>
+          </div>
+          <svg class="bus-svg" viewBox="0 0 800 18" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="20" y1="9" x2="780" y2="9" stroke="var(--sheet-border)" stroke-width="2"/>
+            <line class="bus-flow" x1="20" y1="9" x2="780" y2="9" stroke="var(--pen)" stroke-width="2.5"/>
+            <circle cx="80" cy="9" r="4" fill="var(--pen)"/>
+            <circle cx="240" cy="9" r="4" fill="var(--pen)"/>
+            <circle cx="400" cy="9" r="4" fill="var(--pen)"/>
+            <circle cx="560" cy="9" r="4" fill="var(--pen)"/>
+            <circle cx="720" cy="9" r="4" fill="var(--red)"/>
+          </svg>
+          <p class="sketch-note" id="sketch-note">
+            <code>src/handlers.py + src/middlewares.py</code> — <code>ThrottleMiddleware</code> гасит спам-клики (0.4с), команды <code>/add</code>, <code>/status</code>, <code>/incidents</code> и все callback-и изолированы по <code>user_id</code>, а неизвестные URL получают мгновенную подсказку вместо молчания.
+          </p>
+        </div>
+
+        <div class="stickies-grid">
+          <button class="sticky sky sticky-interactive" type="button" aria-expanded="false">
+            <p class="hand-note"><span>HTTP + SSL + TCP</span><span class="sticky-hint">код ↻</span></p>
+            <h3>Реальные пробы + сертификат</h3>
+            <p>Проверка HTTP-кода, подстроки тела (до 64 КБ), срока TLS-сертификата и TCP-портов.</p>
+            <div class="sticky-code">if ssl_days is not None and ssl_days &lt; ssl_min_days:
+    return False, ssl_days, f"SSL истекает через {ssl_days} дн."</div>
+          </button>
+
+          <button class="sticky mint sticky-interactive" type="button" aria-expanded="false">
+            <p class="hand-note"><span>Anti-rebinding SSRF</span><span class="sticky-hint">код ↻</span></p>
+            <h3>_SafeResolver в TCPConnector</h3>
+            <p>Проверка приватных IP на этапе резолва внутри <code>aiohttp</code> с <code>ttl_dns_cache=0</code> и отключёнными редиректами.</p>
+            <div class="sticky-code">connector = aiohttp.TCPConnector(
+    resolver=_SafeResolver(allow_private=False),
+    ttl_dns_cache=0,
+)</div>
+          </button>
+
+          <button class="sticky pink sticky-interactive" type="button" aria-expanded="false">
+            <p class="hand-note"><span>Zero-trust + JSON</span><span class="sticky-hint">код ↻</span></p>
+            <h3>IDOR, CSV и Observability</h3>
+            <p>SQL-фильтр по <code>user_id</code>, санитайзер CSV-формул и структурированные JSON-логи для Docker/Loki.</p>
+            <div class="sticky-code">SELECT * FROM tasks WHERE id = ? AND user_id = ?
+# LOG_FORMAT=json -&gt; {"ts":...,"level":"INFO"}</div>
+          </button>
+        </div>
+      </section>
+
+      <section class="sec" id="checklist">
+        <div class="sec-head">
+          <h2><span class="sec-num">02</span> Живой чек-лист ручкой + телеметрия</h2>
+          <span class="margin-doodle">кликни строку для диагностики ↓</span>
+        </div>
+
+        <form class="pad-form" id="pad-form">
+          <input id="pad-input" type="text" placeholder="Впиши эндпоинт: https://my-api.io/health или tcp://db:5432" autocomplete="off">
+          <button class="pad-chip" type="button" data-preset="http://127.0.0.1:8080/admin">+ SSRF тест</button>
+          <button class="pad-chip" type="button" data-preset="tcp://redis.example.net:6379">+ TCP Redis</button>
+          <button class="pad-chip" type="button" data-preset="https://expiring-ssl.example/health">+ SSL 5д</button>
+          <button class="btn btn-ink" type="submit" style="height:34px;padding:0 14px;font-size:12.5px">Добавить</button>
+        </form>
+
+        <div class="filter-bar">
+          <div class="filter-pills" role="group" aria-label="Фильтр мониторов">
+            <button class="flt-btn" type="button" data-flt="all" aria-pressed="true">ALL</button>
+            <button class="flt-btn" type="button" data-flt="ok" aria-pressed="false">UP</button>
+            <button class="flt-btn" type="button" data-flt="fail" aria-pressed="false">DOWN</button>
+            <button class="flt-btn" type="button" data-flt="https" aria-pressed="false">HTTPS</button>
+            <button class="flt-btn" type="button" data-flt="tcp" aria-pressed="false">TCP</button>
+          </div>
+          <button class="pad-chip" id="dl-csv-btn" type="button" title="Скачать реальный CSV с защитой от формул">⬇ CSV (sanitized)</button>
+        </div>
+
+        <div class="checklist-wrap">
+          <div>
+            <ul class="pen-list" id="pen-list"></ul>
+            <div class="check-controls">
+              <button class="btn btn-ink" id="run-pen-btn" type="button">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                Прогнать чек-лист (R)
+              </button>
+              <button class="btn btn-paper" id="toggle-fail-btn" type="button">
+                <svg class="ic" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                <span id="toggle-fail-label">Смоделировать сбой RPC</span>
+              </button>
+            </div>
+            <p class="hand-log" id="hand-log" aria-live="polite">
+              Локальная симуляция AsyncWorkerPool (без реальных сетевых запросов из браузера).
+            </p>
+          </div>
+
+          <div>
+            <div class="tg-note" id="tg-card">
+              <div class="tg-note-head">
+                <span>@tt_bot · Telegram alert</span>
+                <span id="tg-badge" class="num">OK</span>
+              </div>
+              <div class="tg-note-body" id="tg-body">
+                🟢 Все мониторы отвечают в пределах SLA. Кликни любую строку слева, чтобы увидеть детали пробы и TLS/SSRF.
+              </div>
+            </div>
+
+            <div class="graph-card">
+              <div class="graph-head">
+                <span>LATENCY · SLA ≤ 100 мс</span>
+                <span id="graph-readout" class="num">P50 41 мс</span>
+              </div>
+              <svg class="graph-svg" id="spark-svg" viewBox="0 0 280 86" preserveAspectRatio="none" aria-label="График задержки проверок">
+                <line x1="8" y1="30" x2="272" y2="30" stroke="var(--red)" stroke-width="1" stroke-dasharray="4 4" opacity=".55"/>
+                <polyline id="spark-line" fill="none" stroke="var(--pen)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points=""/>
+                <g id="spark-dots"></g>
+              </svg>
+            </div>
+
+            <div class="sla-mini">
+              <div class="sla-pill"><b id="sla-num" class="num">100.0%</b><span>SLA 24ч</span></div>
+              <div class="sla-pill"><b id="p50-num" class="num">42 мс</b><span>P50</span></div>
+              <div class="sla-pill"><b id="p95-num" class="num">64 мс</b><span>P95</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec" id="start">
+        <div class="sec-head">
+          <h2><span class="sec-num">03</span> Поднять за 60 секунд</h2>
+          <span class="margin-doodle">non-root Docker · JSON logs · systemd</span>
+        </div>
+        <div class="tab-bar" role="tablist">
+          <button class="tab-btn" type="button" role="tab" aria-selected="true" data-tab="compose">docker compose</button>
+          <button class="tab-btn" type="button" role="tab" aria-selected="false" data-tab="python">python venv</button>
+          <button class="tab-btn" type="button" role="tab" aria-selected="false" data-tab="tests">pytest + CI</button>
+        </div>
+        <div class="code-card">
+          <div class="code-bar">
+            <span id="code-caption">docker-compose.yml · read_only · LOG_FORMAT=json · HEALTHCHECK</span>
+            <button class="copy-btn" id="copy-btn" type="button">
+              <svg class="ic" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <span id="copy-label">Скопировать</span>
+            </button>
+          </div>
+<pre id="code-block">git clone https://github.com/ssrjkk/tt_bot.git
+cd tt_bot
+cp .env.example .env
+# укажи BOT_TOKEN в .env
+docker compose up -d --build</pre>
+        </div>
+      </section>
+    </main>
+
+    <footer class="sheet-foot">
+      <span class="raven-sig" title="ssrjkk">
+        <svg viewBox="0 0 36 36" fill="none" aria-hidden="true">
+          <path d="M9 26c3-7 7-13 13-15 3-1 6 0 7 2l4 1-4 2c-1 5-4 10-10 12l-4 3-2-3-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="24" cy="14" r="1.4" fill="currentColor"/>
+        </svg>
+        ssrjkk · tt_bot v2.3 · MIT
+      </span>
+      <span>
+        <a href="./showcase/">Интерактивная витрина</a> ·
+        <a href="https://github.com/ssrjkk/tt_bot">GitHub</a> ·
+        <a href="https://github.com/ssrjkk/tt_bot/blob/main/ARCHITECTURE.md">Architecture</a>
+      </span>
+    </footer>
   </div>
-
-  <section class="spread" id="zadachi">
-    <span class="num">стр. 1</span>
-    <h2>Задачи: от «сдать» до «сдано»<svg viewBox="0 0 260 14" preserveAspectRatio="none"><path d="M3 8 C 70 2, 150 12, 256 7"/></svg></h2>
-    <p class="lead">Сценарий приёмки построен на FSM: пользователь называет лабу →
-    выбирает категорию → прикладывает файл или ссылку → задача появляется в списке
-    со статусом. Статус меняется колбэком, напоминание приходит до, в день и после
-    дедлайна.</p>
-    <ul class="check">
-      <li><span class="box"><svg viewBox="0 0 26 26"><path d="M5 14 C 9 17, 11 21, 12 22 C 15 15, 19 9, 23 5"/></svg></span><span class="txt">создание задачи за 3 сообщения, без форм и команд</span></li>
-      <li><span class="box"><svg viewBox="0 0 26 26"><path d="M5 14 C 9 17, 11 21, 12 22 C 15 15, 19 9, 23 5"/></svg></span><span class="txt">статусы: новая → в работе → сдана, смена колбэком</span></li>
-      <li><span class="box"><svg viewBox="0 0 26 26"><path d="M5 14 C 9 17, 11 21, 12 22 C 15 15, 19 9, 23 5"/></svg></span><span class="txt">напоминания о дедлайне — до, в день и после</span></li>
-      <li><span class="box"><svg viewBox="0 0 26 26"><path d="M5 14 C 9 17, 11 21, 12 22 C 15 15, 19 9, 23 5"/></svg></span><span class="txt">мониторинг URL — бот сам проверяет и логирует</span></li>
-    </ul>
-    <div class="fields">
-      <div class="field"><b>24</b>теста</div>
-      <div class="field"><b>96%</b>покрытия</div>
-      <div class="field"><b>3</b>индекса БД</div>
-      <div class="field"><b>1</b>персистентное соединение</div>
-    </div>
-  </section>
-
-  <section class="spread" id="deploy">
-    <span class="num">стр. 2</span>
-    <h2>Поднимается за пять минут<svg viewBox="0 0 240 14" preserveAspectRatio="none"><path d="M3 7 C 60 12, 150 3, 236 8"/></svg></h2>
-    <p class="lead">Два пути — оба описаны в README без догадок: Docker (volume /data)
-    или systemd (venv в /opt, юнит с переименованием). sqlite работает под WAL —
-    «database is locked» при двух воркерах исключён.</p>
-    <div class="fields">
-      <div class="field"><b>Docker</b>volume /data</div>
-      <div class="field"><b>systemd</b>venv + юнит</div>
-      <div class="field"><b>WAL</b>+ NORMAL sync</div>
-      <div class="field"><b>64 MB</b>кэш в памяти</div>
-    </div>
-    <p class="lead" style="margin-top:18px">CI держит планку: flake8, black, pip-audit --strict,
-    сетевой-guard на тестах и гейт покрытия 90%.</p>
-  </section>
-
-  <div class="tear"><svg viewBox="0 0 800 26" preserveAspectRatio="none"><path d="M0 0 H800 V10 L780 14 L756 9 L731 16 L704 10 L679 15 L648 9 L620 16 L592 10 L565 14 L537 9 L508 15 L482 10 L451 16 L424 9 L397 14 L370 10 L341 15 L314 9 L288 16 L259 10 L232 14 L204 9 L176 15 L148 10 L119 16 L92 9 L66 14 L38 10 L14 15 L0 9 Z"/></svg></div>
 </div>
 
-<footer>
-  <span>tt_bot · лабораторные сдаются в чате</span>
-  <span><a href="https://github.com/ssrjkk/tt_bot">GitHub ↗</a> · <a href="https://ssrjkk.github.io/">все проекты ↗</a></span>
-</footer>
+<!-- Command Palette Modal (⌘K) -->
+<div class="cmdk-backdrop" id="cmdk-backdrop" role="dialog" aria-modal="true" aria-label="Командная палитра">
+  <div class="cmdk-dialog">
+    <div class="cmdk-head">
+      <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="cmdk-input" type="text" placeholder="Найти команду или раздел..." autocomplete="off">
+      <span class="kbd">ESC</span>
+    </div>
+    <ul class="cmdk-list" id="cmdk-list"></ul>
+    <div class="cmdk-foot"><span>↑↓ навигация · Enter выбор</span><span>tt_bot v2.3 palette</span></div>
+  </div>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+<!-- Hotkeys Cheat-Sheet Modal (?) -->
+<div class="cmdk-backdrop" id="hk-backdrop" role="dialog" aria-modal="true" aria-label="Горячие клавиши">
+  <div class="cmdk-dialog">
+    <div class="cmdk-head">
+      <strong style="font:800 13.5px/1 var(--mono)">KEYBOARD SHORTCUTS · tt_bot</strong>
+      <button class="ctrl-pill" id="hk-close" type="button" style="height:26px">ESC</button>
+    </div>
+    <div class="hk-grid">
+      <div class="hk-row"><span>Командная палитра</span><span class="kbd">⌘K / Ctrl+K</span></div>
+      <div class="hk-row"><span>Прогнать чек-лист</span><span class="kbd">R</span></div>
+      <div class="hk-row"><span>Блокнот ↔ Чертёж</span><span class="kbd">T</span></div>
+      <div class="hk-row"><span>Сменить цвет чернил</span><span class="kbd">I</span></div>
+      <div class="hk-row"><span>Инспектор узлов 1–5</span><span class="kbd">1 – 5</span></div>
+      <div class="hk-row"><span>Эта шпаргалка</span><span class="kbd">?</span></div>
+    </div>
+    <div class="cmdk-foot"><span>Навигация без мыши · Zero-CLS</span><span>tt_bot v2.3</span></div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+
 <script>
 (function(){
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  if (!window.gsap || !window.ScrollTrigger) return;
-  gsap.registerPlugin(ScrollTrigger);
+  "use strict";
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const htmlEl = document.documentElement;
 
-  /* лист ложится на стол */
-  gsap.from(".sheet", {duration:1.1, y:-46, rotation:-2.2, opacity:0, ease:"power3.out"});
+  /* Populate numbered margin rail */
+  const mNums = document.getElementById("margin-nums");
+  mNums.innerHTML = Array.from({length:34}, (_, i) => `<span>${String(i+1).padStart(2,"0")}</span>`).join("");
 
-  /* заголовок «прописывается» */
-  gsap.from("header h1, header .ann, header .sub, .cta .btn", {
-    duration:.8, y:22, opacity:0, stagger:.12, ease:"power2.out", delay:.35
+  /* Tactile Toast Stack */
+  const toastStack = document.getElementById("toast-stack");
+  function showToast(msg, kind){
+    const el = document.createElement("div");
+    el.className = "toast" + (kind ? " " + kind : "");
+    el.textContent = msg;
+    toastStack.appendChild(el);
+    while(toastStack.children.length > 3) toastStack.firstChild.remove();
+    setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .2s"; setTimeout(() => el.remove(), 220); }, 2300);
+  }
+
+  /* Subtle Web Audio pen click (off by default) */
+  let soundOn = false;
+  let audioCtx = null;
+  function playTick(freq, dur){
+    if(!soundOn) return;
+    try{
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); osc.stop(audioCtx.currentTime + dur);
+    }catch(_e){}
+  }
+
+  /* Theme toggle (Paper Notebook <-> Blueprint) */
+  const themeBtn = document.getElementById("theme-toggle");
+  const themeLabel = document.getElementById("theme-label");
+  function applyTheme(mode, silent){
+    htmlEl.setAttribute("data-theme", mode);
+    const isBp = mode === "blueprint";
+    themeBtn.setAttribute("aria-pressed", String(isBp));
+    themeLabel.textContent = isBp ? "📄 Блокнот" : "📐 Чертёж";
+    const telMode = document.getElementById("tel-mode");
+    if(telMode) telMode.textContent = isBp ? "BLUEPRINT" : "PAPER";
+    try{ localStorage.setItem("tt_bot_theme", mode); }catch(_e){}
+    if(!silent) showToast(isBp ? "Режим: Инженерный чертёж" : "Режим: Бумажный блокнот");
+  }
+  try{
+    const saved = localStorage.getItem("tt_bot_theme");
+    if(saved === "blueprint" || saved === "paper") applyTheme(saved, true);
+  }catch(_e){}
+  themeBtn.addEventListener("click", () => {
+    applyTheme(htmlEl.getAttribute("data-theme") === "blueprint" ? "paper" : "blueprint", false);
+    playTick(520, 0.05);
   });
 
-  /* стикеры подпрыгивают */
-  gsap.from(".note", {
-    duration:.9, scale:.4, opacity:0, transformOrigin:"50% 0%",
-    stagger:.16, ease:"elastic.out(1,.55)", delay:.9
+  /* Ink switcher */
+  const inkDots = Array.from(document.querySelectorAll(".ink-dot"));
+  function applyInk(dot, silent){
+    htmlEl.style.setProperty("--pen", dot.dataset.ink);
+    htmlEl.style.setProperty("--pen-dark", dot.dataset.inkDark);
+    inkDots.forEach(d => d.setAttribute("aria-pressed", String(d === dot)));
+    try{ localStorage.setItem("tt_bot_ink", dot.dataset.ink); }catch(_e){}
+    if(!silent) showToast(`Чернила: ${dot.title}`);
+  }
+  try{
+    const savedInk = localStorage.getItem("tt_bot_ink");
+    const match = inkDots.find(d => d.dataset.ink === savedInk);
+    if(match) applyInk(match, true);
+  }catch(_e){}
+  inkDots.forEach(dot => dot.addEventListener("click", () => { applyInk(dot, false); playTick(600, 0.04); }));
+
+  function cycleInk(){
+    const idx = inkDots.findIndex(d => d.getAttribute("aria-pressed") === "true");
+    applyInk(inkDots[(idx + 1) % inkDots.length], false);
+    playTick(600, 0.04);
+  }
+
+  /* Sound toggle */
+  const soundBtn = document.getElementById("sound-toggle");
+  const soundLabel = document.getElementById("sound-label");
+  soundBtn.addEventListener("click", () => {
+    soundOn = !soundOn;
+    soundBtn.setAttribute("aria-pressed", String(soundOn));
+    soundLabel.textContent = soundOn ? "SFX on" : "SFX off";
+    playTick(560, 0.05);
+    showToast(soundOn ? "Звук ручки включён" : "Звук выключен");
   });
 
-  /* подчёркивания-росчерки рисуются при появлении */
-  document.querySelectorAll(".spread").forEach(function(sec){
-    var path = sec.querySelector("h2 path");
-    if (path){
-      var len = path.getTotalLength();
-      path.style.strokeDasharray = len; path.style.strokeDashoffset = len;
-      gsap.to(path, {strokeDashoffset:0, duration:1, ease:"power2.inOut",
-        scrollTrigger:{trigger:sec, start:"top 72%", once:true}});
+  /* Scroll progress + section reveal + index-tab active tracking */
+  const bmFill = document.getElementById("bm-fill");
+  const tabs = Array.from(document.querySelectorAll(".index-tab[data-sec]"));
+  function onScroll(){
+    const h = document.documentElement.scrollHeight - window.innerHeight;
+    bmFill.style.width = (h > 0 ? Math.min(100, (window.scrollY / h) * 100) : 0).toFixed(1) + "%";
+    let activeId = "top";
+    ["sketch","checklist","start"].forEach(id => {
+      const el = document.getElementById(id);
+      if(el && el.getBoundingClientRect().top <= 220) activeId = id;
+    });
+    tabs.forEach(t => t.classList.toggle("active", t.dataset.sec === activeId));
+  }
+  window.addEventListener("scroll", onScroll, {passive:true});
+  onScroll();
+
+  const secs = document.querySelectorAll(".sec");
+  if("IntersectionObserver" in window){
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(en => { if(en.isIntersecting){ en.target.classList.add("visible"); io.unobserve(en.target); } });
+    }, {threshold:0.06});
+    secs.forEach(s => io.observe(s));
+  } else {
+    secs.forEach(s => s.classList.add("visible"));
+  }
+
+  /* Architecture sketch notes */
+  const SKETCH_NOTES = {
+    router: '<code>src/handlers.py + src/middlewares.py</code> — <code>ThrottleMiddleware</code> гасит спам-клики (0.4с), команды <code>/add</code>, <code>/status</code>, <code>/incidents</code> и все callback-и изолированы по <code>user_id</code>, а неизвестные URL получают мгновенную подсказку вместо молчания.',
+    pool: '<code>src/services.py → AsyncWorkerPool</code> — дедупликация очереди <code>_in_flight</code>, параллельный запуск <code>Проверить все</code> и <code>Перепроверить упавшие</code>, изоляция падений пробника и <code>stop(drain_timeout=10)</code>.',
+    prober: '<code>src/probes.py → EndpointProber</code> — <code>_SafeResolver</code> блокирует приватные IP и DNS rebinding (<code>ttl_dns_cache=0</code>), проверяет HTTP-код, подстроку ответа (до 64 КБ), срок SSL-сертификата и TCP-порты.',
+    db: '<code>src/database.py → DatabaseRepository</code> — SQLite WAL + <code>busy_timeout=5000</code>, авто-миграция схемы v1 → v2.3, per-monitor SLA 24ч, история 10 проверок (<code>🟩🟩🟥🟩🟩</code>) и P95.',
+    alerts: '<code>src/services.py → MonitorScheduler + src/main.py</code> — авто-опрос каждые 1/5/15 мин, настраиваемый порог алертов (1..3 ошибки) в карточке и уведомление о восстановлении.'
+  };
+  const sketchNote = document.getElementById("sketch-note");
+  document.querySelectorAll(".sketch-node").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".sketch-node").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+      sketchNote.innerHTML = SKETCH_NOTES[btn.dataset.node];
+      playTick(500, 0.04);
+    });
+  });
+
+  document.querySelectorAll(".sticky-interactive").forEach(card => {
+    card.addEventListener("click", () => {
+      const open = card.getAttribute("aria-expanded") === "true";
+      card.setAttribute("aria-expanded", String(!open));
+      playTick(open ? 360 : 480, 0.045);
+    });
+  });
+
+  /* Live Checklist + Click-to-Inspect Drawer + Sparkline */
+  let nextId = 5;
+  let selectedId = 1;
+  let activeFilter = "all";
+  const items = [
+    {id:1, title:"Core Backend API", ep:"https://api.example.com/health", cat:"backend", state:"ok", ms:38, note:"HTTP 200 · SSL 84д", forcedFail:false, hist:[1,1,1,1,1,1,1,1,1,1]},
+    {id:2, title:"Ethereum RPC Node", ep:"tcp://rpc-01.example.net:8545", cat:"rpc_node", state:"ok", ms:64, note:"TCP OK", forcedFail:false, hist:[1,1,1,0,1,1,1,1,1,1]},
+    {id:3, title:"QA Staging Ingress", ep:"https://stage.example.com/ready", cat:"qa_test", state:"ok", ms:51, note:"HTTP 200 · SSL 61д", forcedFail:false, hist:[1,1,1,1,1,1,1,1,1,1]},
+    {id:4, title:"PostgreSQL Primary", ep:"tcp://db-01.example.net:5432", cat:"devops", state:"ok", ms:19, note:"TCP OK", forcedFail:false, hist:[1,1,1,1,1,1,1,1,1,1]}
+  ];
+  let historyAvg = [44, 39, 46, 41, 43, 38, 43];
+  let failRpc = false;
+  let running = false;
+
+  const listEl = document.getElementById("pen-list");
+  const logEl = document.getElementById("hand-log");
+  const tgCard = document.getElementById("tg-card");
+  const tgBadge = document.getElementById("tg-badge");
+  const tgBody = document.getElementById("tg-body");
+  const slaNum = document.getElementById("sla-num");
+  const p50Num = document.getElementById("p50-num");
+  const p95Num = document.getElementById("p95-num");
+  const sparkLine = document.getElementById("spark-line");
+  const sparkDots = document.getElementById("spark-dots");
+  const graphReadout = document.getElementById("graph-readout");
+
+  function drawSparkline(){
+    const pts = historyAvg.slice(-10);
+    const maxV = Math.max(120, ...pts);
+    const step = pts.length > 1 ? 260 / (pts.length - 1) : 0;
+    const coords = pts.map((v, i) => ({
+      x: Math.round(10 + i * step),
+      y: Math.round(76 - (Math.min(v, maxV) / maxV) * 62),
+      v
+    }));
+    sparkLine.setAttribute("points", coords.map(c => `${c.x},${c.y}`).join(" "));
+    sparkDots.innerHTML = coords.map((c, idx) =>
+      `<circle class="graph-pt" cx="${c.x}" cy="${c.y}" r="3.4" fill="${c.v > 100 ? 'var(--red)' : 'var(--pen)'}" data-ms="${c.v}" data-run="${idx+1}"><title>Прогон #${idx+1}: ${c.v} мс</title></circle>`
+    ).join("");
+    sparkDots.querySelectorAll(".graph-pt").forEach(dot => {
+      dot.addEventListener("mouseenter", () => {
+        graphReadout.textContent = `run #${dot.dataset.run}: ${dot.dataset.ms} мс`;
+      });
+    });
+    graphReadout.textContent = `last ${pts[pts.length - 1]} мс`;
+  }
+
+  function glyph(state){
+    if(state === "ok") return '<svg viewBox="0 0 24 24" fill="none"><path class="check-stroke" d="M4 13l5 5 11-12" stroke="var(--pen)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    if(state === "fail") return '<svg viewBox="0 0 24 24" fill="none"><path class="check-stroke" d="M5 5l14 14M19 5L5 19" stroke="var(--red)" stroke-width="3" stroke-linecap="round"/></svg>';
+    return '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" fill="var(--pen)" opacity=".45"/></svg>';
+  }
+
+  function render(){
+    const visibleItems = items.filter(it => {
+      if(activeFilter === "ok") return it.state === "ok";
+      if(activeFilter === "fail") return it.state === "fail";
+      if(activeFilter === "https") return it.ep.startsWith("http");
+      if(activeFilter === "tcp") return it.ep.startsWith("tcp://");
+      return true;
+    });
+    const telCnt = document.getElementById("tel-cnt");
+    if(telCnt) telCnt.textContent = String(items.length);
+    listEl.innerHTML = (visibleItems.length ? visibleItems : []).map(it => {
+      const latTxt = it.state === "checking" ? "…" : (it.state === "fail" ? it.note : `${it.ms} мс`);
+      const strip = it.hist.slice(-10).map(v => `<i class="${v ? 'ok' : 'fail'}"></i>`).join("");
+      const isSel = it.id === selectedId;
+      const proto = it.ep.startsWith("tcp://") ? "TCP handshake (validated IP)" : "HTTP GET (allow_redirects=False) + TLS cert";
+      const ssrfStatus = /(127\.0\.0\.1|localhost|10\.|169\.254|::1)/i.test(it.ep) ? "BLOCKED (_SafeResolver)" : "PASS (public IP)";
+      return `<li class="pen-item${isSel ? ' selected' : ''}" data-state="${it.state}">
+        <button class="pen-row-btn" type="button" data-select="${it.id}" aria-expanded="${isSel}">
+          <span class="check-box" aria-hidden="true">${glyph(it.state)}</span>
+          <div class="pen-main">
+            <div class="pen-ep">${esc(it.ep)}</div>
+            <div class="pen-sub">
+              <span>#${it.id} · ${esc(it.title)}</span>
+              <span class="strip" title="Последние 10 проверок">${strip}</span>
+            </div>
+          </div>
+          <span class="pen-lat num">${esc(latTxt)}</span>
+        </button>
+        <div class="row-drawer">
+          <div>probe: ${proto}</div>
+          <div>ssrf_guard: ${ssrfStatus} · status: ${esc(it.note)}</div>
+          <div class="drawer-actions">
+            <button class="drawer-btn" type="button" data-toggle-item="${it.id}">${it.forcedFail ? "Восстановить узел" : "Сломать узел"}</button>
+            ${it.id >= 5 ? `<button class="drawer-btn danger" type="button" data-del-item="${it.id}">Удалить</button>` : ""}
+          </div>
+        </div>
+      </li>`;
+    }).join("") || '<li style="padding:14px;font:600 12.5px/1 var(--mono);color:var(--muted)">Нет мониторов под выбранный фильтр.</li>';
+
+    listEl.querySelectorAll("[data-select]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = Number(btn.dataset.select);
+        selectedId = selectedId === id ? null : id;
+        render();
+        playTick(460, 0.035);
+      });
+    });
+    listEl.querySelectorAll("[data-toggle-item]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const it = items.find(x => x.id === Number(btn.dataset.toggleItem));
+        if(!it) return;
+        it.forcedFail = !it.forcedFail;
+        showToast(it.forcedFail ? `Монитор #${it.id}: смоделирован сбой` : `Монитор #${it.id}: возвращён в норму`, it.forcedFail ? "err" : "ok");
+        runSimulation();
+      });
+    });
+    listEl.querySelectorAll("[data-del-item]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = Number(btn.dataset.delItem);
+        const idx = items.findIndex(x => x.id === id);
+        if(idx >= 0) items.splice(idx, 1);
+        selectedId = items[0] ? items[0].id : null;
+        render();
+        showToast(`Удалён монитор #${id}`);
+      });
+    });
+  }
+
+  function evaluateEndpoint(it){
+    if(/(127\.0\.0\.1|localhost|10\.|169\.254|::1)/i.test(it.ep)){
+      return {state:"fail", ms:2, note:"SSRF guard"};
     }
-    gsap.from(sec.querySelectorAll("p.lead, .fields .field"), {
-      duration:.7, y:18, opacity:0, stagger:.08, ease:"power2.out",
-      scrollTrigger:{trigger:sec, start:"top 68%", once:true}
+    if(/expiring-ssl/i.test(it.ep)){
+      return {state:"fail", ms:48, note:"SSL 5 дн. (<14)"};
+    }
+    if(it.forcedFail || (it.id === 2 && failRpc) || /fail|error/i.test(it.ep)){
+      return {state:"fail", ms:5000, note:"timeout"};
+    }
+    const ms = 16 + Math.floor(Math.random() * 58);
+    const note = it.ep.startsWith("tcp://") ? "TCP OK" : "HTTP 200 · SSL 82д";
+    return {state:"ok", ms, note};
+  }
+
+  function runSimulation(){
+    if(running) return;
+    running = true;
+    items.forEach(it => { it.state = "checking"; });
+    render();
+    logEl.textContent = `AsyncWorkerPool: 3 воркера проверяют ${items.length} эндпоинтов…`;
+
+    const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const stepDelay = reduced ? 0 : 190;
+
+    items.forEach((it, idx) => {
+      setTimeout(() => {
+        const res = evaluateEndpoint(it);
+        it.state = res.state;
+        it.ms = res.ms;
+        it.note = res.note;
+        it.hist.push(res.state === "ok" ? 1 : 0);
+        if(it.hist.length > 10) it.hist.shift();
+        playTick(res.state === "ok" ? 620 + idx * 40 : 210, res.state === "ok" ? 0.04 : 0.09);
+        render();
+
+        if(idx === items.length - 1){
+          const okCount = items.filter(x => x.state === "ok").length;
+          const failedItems = items.filter(x => x.state === "fail");
+          const slaTxt = ((okCount / items.length) * 100).toFixed(1) + "%";
+          slaNum.textContent = slaTxt;
+          document.getElementById("tel-sla").textContent = slaTxt;
+          document.getElementById("tel-sys").textContent = failedItems.length ? "DEGRADED" : "NOMINAL";
+          document.getElementById("tel-dot").classList.toggle("alert", failedItems.length > 0);
+          const allLats = items.map(x => x.ms).sort((a,b) => a - b);
+          const p50 = allLats[Math.floor((allLats.length - 1) * 0.5)] || 0;
+          const p95 = allLats[allLats.length - 1] || 0;
+          p50Num.textContent = p50 + " мс";
+          p95Num.textContent = p95 + " мс";
+          const okLats = items.filter(x => x.state === "ok").map(x => x.ms);
+          historyAvg.push(okLats.length ? Math.round(okLats.reduce((a,b)=>a+b,0)/okLats.length) : 140);
+          drawSparkline();
+
+          if(failedItems.length){
+            const f = failedItems[0];
+            tgCard.classList.add("is-alert");
+            tgBadge.textContent = "ALERT";
+            tgBadge.style.color = "var(--red)";
+            tgBody.innerHTML = `🔴 <b>Инцидент на мониторе #${f.id}</b><br>▪️ Эндпоинт: <code>${esc(f.ep)}</code><br>▪️ Причина: <code>${esc(f.note)}</code>`;
+            logEl.textContent = `Готово: ${okCount} OK, ${failedItems.length} FAIL — инцидент записан в /incidents.`;
+            showToast(`ALERT #${f.id}: ${f.note}`, "err");
+          } else {
+            tgCard.classList.remove("is-alert");
+            tgBadge.textContent = "OK";
+            tgBadge.style.color = "var(--green)";
+            tgBody.innerHTML = `🟢 <b>Все ${items.length} мониторов отвечают штатно</b><br>Логи, P50/P95 и SSL-статус сохранены в <code>SQLite WAL</code>.`;
+            logEl.textContent = `Готово: ${items.length} из ${items.length} проверены ручкой — без инцидентов.`;
+            showToast(`Прогон завершён: ${okCount}/${items.length} UP`, "ok");
+          }
+          running = false;
+        }
+      }, stepDelay * (idx + 1));
+    });
+  }
+
+  /* Custom endpoint form */
+  const padForm = document.getElementById("pad-form");
+  const padInput = document.getElementById("pad-input");
+  function addCustomEndpoint(raw){
+    const val = raw.trim();
+    if(!val) return;
+    const ep = val.includes("://") ? val : `https://${val}`;
+    const cat = ep.startsWith("tcp://") ? "devops" : "backend";
+    const id = nextId++;
+    items.unshift({id, title:"Custom Monitor", ep, cat, state:"checking", ms:0, note:"в очереди", forcedFail:false, hist:[1,1,1,1,1,1,1,1,1]});
+    selectedId = id;
+    if(items.length > 7) items.pop();
+    padInput.value = "";
+    runSimulation();
+  }
+  padForm.addEventListener("submit", e => { e.preventDefault(); addCustomEndpoint(padInput.value); });
+  document.querySelectorAll(".pad-chip[data-preset]").forEach(ch => ch.addEventListener("click", () => addCustomEndpoint(ch.dataset.preset)));
+
+  document.getElementById("run-pen-btn").addEventListener("click", runSimulation);
+  document.getElementById("toggle-fail-btn").addEventListener("click", () => {
+    failRpc = !failRpc;
+    document.getElementById("toggle-fail-label").textContent = failRpc ? "Вернуть RPC в норму" : "Смоделировать сбой RPC";
+    runSimulation();
+  });
+
+  /* Deploy tabs */
+  const SNIPPETS = {
+    compose: {
+      caption: "docker-compose.yml · read_only · LOG_FORMAT=json · HEALTHCHECK",
+      code: "git clone https://github.com/ssrjkk/tt_bot.git\ncd tt_bot\ncp .env.example .env\n# укажи BOT_TOKEN в .env\ndocker compose up -d --build"
+    },
+    python: {
+      caption: "Python 3.11 / 3.12 · venv · локальный запуск",
+      code: "git clone https://github.com/ssrjkk/tt_bot.git\ncd tt_bot\npython3 -m venv .venv && source .venv/bin/activate\npip install -r requirements.txt\nexport BOT_TOKEN=\"your_bot_token_here\"\npython -m src.main"
+    },
+    tests: {
+      caption: "Makefile · оффлайн-тесты без выхода во внешнюю сеть",
+      code: "pip install -r requirements-dev.txt\nmake lint\nmake test\nmake audit"
+    }
+  };
+  const codeBlock = document.getElementById("code-block");
+  const codeCaption = document.getElementById("code-caption");
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.setAttribute("aria-selected", "false"));
+      btn.setAttribute("aria-selected", "true");
+      const entry = SNIPPETS[btn.dataset.tab];
+      codeCaption.textContent = entry.caption;
+      codeBlock.textContent = entry.code;
+      playTick(500, 0.035);
     });
   });
 
-  /* чекбоксы «обводятся ручкой» */
-  gsap.utils.toArray(".check li").forEach(function(li){
-    ScrollTrigger.create({
-      trigger:li, start:"top 78%", once:true,
-      onEnter:function(){
-        li.classList.add("done");
-        var p = li.querySelector(".box path");
-        if (p) gsap.to(p, {strokeDashoffset:0, duration:.5, ease:"power1.inOut", delay:.12});
-      }
+  function copyDeploy(){
+    const label = document.getElementById("copy-label");
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(codeBlock.textContent).then(() => {
+        label.textContent = "Скопировано ✓";
+        showToast("Команда скопирована в буфер", "ok");
+        playTick(720, 0.05);
+        setTimeout(() => { label.textContent = "Скопировать"; }, 1800);
+      });
+    }
+  }
+  document.getElementById("copy-btn").addEventListener("click", copyDeploy);
+
+  /* Command Palette (⌘K / Ctrl+K) */
+  const backdrop = document.getElementById("cmdk-backdrop");
+  const cmdkInput = document.getElementById("cmdk-input");
+  const cmdkList = document.getElementById("cmdk-list");
+  let cmdkIdx = 0;
+
+  const COMMANDS = [
+    {label:"Прогнать живой чек-лист проверок", hint:"R", run:() => { document.getElementById("checklist").scrollIntoView(); runSimulation(); }},
+    {label:"Переключить режим: Блокнот ↔ Чертёж", hint:"T", run:() => applyTheme(htmlEl.getAttribute("data-theme")==="blueprint"?"paper":"blueprint", false)},
+    {label:"Сменить цвет чернил ручки", hint:"I", run:cycleInk},
+    {label:"Смоделировать SSRF-атаку (127.0.0.1)", hint:"SSRF", run:() => { document.getElementById("checklist").scrollIntoView(); addCustomEndpoint("http://127.0.0.1:8080/admin"); }},
+    {label:"Смоделировать истекающий SSL (5 дн.)", hint:"TLS", run:() => { document.getElementById("checklist").scrollIntoView(); addCustomEndpoint("https://expiring-ssl.example/health"); }},
+    {label:"Скопировать команду запуска Docker", hint:"copy", run:copyDeploy},
+    {label:"Открыть интерактивную витрину-симулятор", hint:"/showcase/", run:() => { window.location.href = "./showcase/"; }},
+    {label:"Открыть репозиторий на GitHub", hint:"github", run:() => { window.open("https://github.com/ssrjkk/tt_bot", "_blank", "noopener"); }}
+  ];
+
+  function renderCmdk(){
+    const q = cmdkInput.value.trim().toLowerCase();
+    const filtered = COMMANDS.filter(c => !q || c.label.toLowerCase().includes(q) || c.hint.toLowerCase().includes(q));
+    if(cmdkIdx >= filtered.length) cmdkIdx = 0;
+    cmdkList.innerHTML = filtered.map((c, i) =>
+      `<li><button class="cmdk-item${i===cmdkIdx?' active':''}" type="button" data-i="${i}"><span>${esc(c.label)}</span><span class="kbd">${esc(c.hint)}</span></button></li>`
+    ).join("") || '<li style="padding:12px;color:var(--muted);font-family:var(--mono);font-size:12px">Ничего не найдено</li>';
+    cmdkList.querySelectorAll(".cmdk-item").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const item = filtered[Number(btn.dataset.i)];
+        closeCmdk();
+        if(item) item.run();
+      });
+    });
+    return filtered;
+  }
+  function openCmdk(){ backdrop.classList.add("open"); cmdkInput.value = ""; cmdkIdx = 0; renderCmdk(); cmdkInput.focus(); }
+  function closeCmdk(){ backdrop.classList.remove("open"); }
+
+  document.getElementById("cmdk-open").addEventListener("click", openCmdk);
+  backdrop.addEventListener("click", e => { if(e.target === backdrop) closeCmdk(); });
+  cmdkInput.addEventListener("input", () => { cmdkIdx = 0; renderCmdk(); });
+  cmdkInput.addEventListener("keydown", e => {
+    const filtered = renderCmdk();
+    if(e.key === "ArrowDown"){ e.preventDefault(); cmdkIdx = (cmdkIdx + 1) % Math.max(1, filtered.length); renderCmdk(); }
+    else if(e.key === "ArrowUp"){ e.preventDefault(); cmdkIdx = (cmdkIdx - 1 + Math.max(1, filtered.length)) % Math.max(1, filtered.length); renderCmdk(); }
+    else if(e.key === "Enter" && filtered[cmdkIdx]){ e.preventDefault(); const fn = filtered[cmdkIdx].run; closeCmdk(); fn(); }
+    else if(e.key === "Escape"){ closeCmdk(); }
+  });
+
+  document.addEventListener("keydown", e => {
+    if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k"){ e.preventDefault(); backdrop.classList.contains("open") ? closeCmdk() : openCmdk(); return; }
+    if(e.key === "Escape"){ closeCmdk(); closeHk(); return; }
+    if(backdrop.classList.contains("open")) return;
+    if(e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+    const k = e.key.toLowerCase();
+    if(k === "r") runSimulation();
+    else if(k === "t"){ applyTheme(htmlEl.getAttribute("data-theme")==="blueprint"?"paper":"blueprint", false); playTick(520, 0.05); }
+    else if(k === "i") cycleInk();
+    else if(e.key === "?"){ openHk(); }
+    else if(["1","2","3","4","5"].includes(e.key)){
+      const nodes = document.querySelectorAll(".sketch-node");
+      const target = nodes[Number(e.key) - 1];
+      if(target){ target.click(); document.getElementById("sketch").scrollIntoView({behavior:"smooth"}); }
+    }
+  });
+
+
+  /* Checklist filter buttons */
+  document.querySelectorAll(".flt-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeFilter = btn.dataset.flt;
+      document.querySelectorAll(".flt-btn").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+      render();
+      playTick(500, 0.035);
     });
   });
 
-  /* стикеры чуть качаются на скролле листа */
-  gsap.to(".notes", {y:-24, ease:"none",
-    scrollTrigger:{trigger:".notes", start:"top bottom", end:"bottom top", scrub:1}});
+  /* Real sanitized CSV export from checklist */
+  document.getElementById("dl-csv-btn").addEventListener("click", () => {
+    const sanitize = v => (/^[=+\-@\t\r]/.test(String(v)) ? "'" + v : v);
+    const header = "ID;Title;Category;Endpoint;State;Latency_ms;Details";
+    const rows = items.map(it => [it.id, sanitize(it.title), it.cat, sanitize(it.ep), it.state, it.ms, sanitize(it.note)].join(";"));
+    const csv = "\uFEFF" + [header, ...rows].join("\n");
+    const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "tt_bot_demo_export.csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast("Скачан sanitized CSV (UTF-8-SIG)", "ok");
+    playTick(700, 0.05);
+  });
+
+  /* Hotkeys modal (?) */
+  const hkBackdrop = document.getElementById("hk-backdrop");
+  const openHk = () => hkBackdrop.classList.add("open");
+  const closeHk = () => hkBackdrop.classList.remove("open");
+  document.getElementById("hk-open").addEventListener("click", openHk);
+  document.getElementById("hk-close").addEventListener("click", closeHk);
+  hkBackdrop.addEventListener("click", e => { if(e.target === hkBackdrop) closeHk(); });
+
+  render();
+  drawSparkline();
 })();
 </script>
 </body>

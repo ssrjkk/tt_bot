@@ -1,40 +1,49 @@
-# Architecture
+# Architecture (v2.3)
 
-Карта системы. Код: `src/`, данные: sqlite (volume /data).
+Карта системы `tt_bot`. Исходный код: `src/`, хранилище: SQLite WAL (в Docker — volume `/data`).
 
-## Поток
+## Поток данных
 
+```text
+Telegram Bot API (/start, /add, /status, /incidents, /stats, /export, /help, /cancel)
+       │
+       ▼
+src/middlewares.py (ThrottleMiddleware — anti-flood per user_id)
+       │
+       ▼
+src/handlers.py (aiogram 3 Router + states.py + keyboards.py)
+  • IDOR Guard: все SQL-операции ограничены user_id
+  • Весь ввод экранируется через html.escape
+  • Zero-dead-end fallback_message (умная подсказка для URL)
+       │
+       ├── ручной запуск / Проверить все / Перепроверить упавшие ──► AsyncWorkerPool
+       │
+MonitorScheduler (тик каждые SCHEDULER_TICK_SEC)
+  • get_due_tasks() ───────────────────────────────────────────────► AsyncWorkerPool
+  • prune_old_logs() (раз в час)                                           │
+                                                                           ▼
+                                                                   EndpointProber (src/probes.py)
+                                                                   • _SafeResolver (anti-rebinding SSRF)
+                                                                   • HTTP/HTTPS (allow_redirects=False + body 64KB)
+                                                                   • TLS/SSL cert expiry check
+                                                                   • TCP (direct validated IP)
+                                                                           │
+                                                                           ▼
+                                                                   DatabaseRepository (src/database.py)
+                                                                   • SQLite WAL + busy_timeout=5000
+                                                                   • Авто-миграция v1.x -> v2.3
+                                                                   • Per-monitor SLA 24ч, история 10, /incidents, P95
+                                                                           │
+                                                                           ▼
+                                                                   build_alert_sender (src/main.py)
+                                                                   • Инцидент при consecutive_failures == alert_threshold
+                                                                   • Восстановление при возврате в OK
 ```
-Telegram ──► handlers.py (aiogram 3 Router)
-                │  cmd_start → cb_home → cb_create_start
-                ▼
-        FSM (states.py): title → category → endpoint/dedline
-                │
-        services.py (бизнес-логика, напоминания)
-                │
-        database.py (aiosqlite, персистентное соединение)
-                │  WAL · synchronous=NORMAL · cache 64MB · temp в RAM
-        models.py / keyboards.py
-                ▼
-        tasks(user_id), tasks(status), execution_logs(task_id)
-```
-
-## Ключевые решения и их причины
-
-1. **Один handlers.py** — масштаб проекта это оправдывает (KISS): ~100
-   операторов, каждый сценарий виден целиком.
-2. **aiosqlite + WAL** вместо postgres: курсовая живёт на дешёвом VPS,
-   volume /data; PRAGMA-набор устраняет «database is locked» при
-   WORKERS_COUNT>1.
-3. **FSM через aiogram states.py**: шаги приёмки не теряют состояние между
-   сообщениями; отмена — колбэком в меню.
-4. **Сетевой-guard в CI**: тесты не обращаются наружу даже случайно;
-   pip_audit --strict гоняет весь граф зависимостей.
-5. **Деплой двумя путями**: Docker (volume /data) или systemd
-   (deploy/systemd_bot.service, venv в /opt/coursework_var18_bot).
 
 ## Инварианты
-- FSM-сценарий не теряет состояние между шагами.
-- Ни одного лаборанта-пользователя не оставляют без ответа: каждый хендлер
-  закрыт и отвечает на ввод.
-- Формат env (BOT_TOKEN/DB_PATH/WORKERS_COUNT) стабилен.
+
+- Ни один обработчик или экспорт не обходит проверку владельца `user_id` (IDOR).
+- `_SafeResolver` валидирует IP прямо внутри `aiohttp.TCPConnector` (`ttl_dns_cache=0`), а TCP-пробы коннектятся по уже проверенному IP.
+- Каждая кнопка в `src/keyboards.py` имеет обработчик в `src/handlers.py`.
+- `ThrottleMiddleware` защищает бота от флуда нажатиями.
+- Все тесты проходят строго оффлайн (`--allow-hosts=127.0.0.1,::1 --allow-unix-socket`).

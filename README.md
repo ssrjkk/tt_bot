@@ -1,133 +1,55 @@
-# Telegram Task & Monitoring Bot
+# tt_bot — Self-hosted Telegram Endpoint & Task Monitor
 
-[![CI](https://github.com/ssrjkk/tt_bot/actions/workflows/ci.yml/badge.svg)](https://github.com/ssrjkk/tt_bot/actions/workflows/ci.yml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+Лёгкий self-hosted Telegram-бот для мониторинга HTTP/HTTPS, SSL-сертификатов и TCP-сервисов прямо из чата.
+Один Docker-контейнер, SQLite WAL, anti-rebinding SSRF guard, расписание, умные алерты, быстрые команды (`/add`, `/incidents`, `/status`, `/stats`), визуальная история `🟩🟩🟥🟩🟩`, SLA/P95 по каждому монитору и экспорт в CSV.
 
+**Сайт-блокнот и интерактивная витрина (📄 Блокнот / 📐 Чертёж + палитра `⌘K`):**
+- Лендинг: https://ssrjkk.github.io/tt_bot/
+- Интерактивная витрина (чат-симулятор + Trace / SQLite WAL / JSON Logs): https://ssrjkk.github.io/tt_bot/showcase/
 
+---
 
-Курсовая работа по дисциплине «Технологии программирования» (ГУАП, вариант 18).
+## Возможности (v2.3)
 
-Телеграм-бот для управления задачами и мониторинга сервисов. Пользователь создаёт задачи с привязкой к целевому эндпоинту, запускает проверки через пул асинхронных воркеров, получает аналитику и выгружает отчёты в CSV.
+- **Реальные HTTP/HTTPS, SSL и TCP-пробы (`src/probes.py`)**: проверка HTTP-кода, подстроки в теле (`expected_text`, до 64 КБ), срока действия TLS-сертификата (`ssl_min_days`) и TCP-портов.
+- **Anti-rebinding SSRF Guard (`_SafeResolver`)**: проверка IP внутри `aiohttp.TCPConnector` с `ttl_dns_cache=0` и `allow_redirects=False` (для intranet включается `ALLOW_PRIVATE_ENDPOINTS=true`).
+- **Фоновый планировщик (`MonitorScheduler`) + групповые действия**: авто-опрос каждые 1 / 5 / 15 мин, `🔄 Проверить все`, `🔁 Перепроверить упавшие` в `/incidents` и почасовая очистка старых логов.
+- **Строгий Telegram UI/UX**: живая сводка прямо в главном меню, `/add Название https://url [мин]`, 5-шаговый FSM с индикатором шага, карточка монитора с бейджем `🟢 UP / 🔴 DOWN`, per-monitor SLA 24ч, шкалой `🟩🟩🟥🟩🟩`, сменой приоритета/интервала/порога алертов (`1..3`) в один клик и умный fallback (если скинуть сырой URL в чат — бот сразу даст готовую команду `/add`).
+- **Безопасность и продакшен-гигиена**: `ThrottleMiddleware` (anti-flood), строгая SQL-изоляция по `user_id` (IDOR), `html.escape()`, санитайзер CSV Formula Injection (реестр и логи), структурированные JSON-логи (`LOG_FORMAT=json`) и авто-миграция БД с v1.x.
 
-## Возможности
+## Переменные окружения
 
-- Создание задач через FSM-диалог (название → категория → эндпоинт → приоритет)
-- Категории: Backend API, QA AutoTest, RPC Node, DevOps / VPS
-- Пул асинхронных воркеров на `asyncio.Queue` для выполнения проверок
-- Хранение в SQLite (WAL-режим, индексы, 64 MB кэш)
-- Аналитическая сводка: всего задач, выполнено, ожидание, ошибки, средний latency
-- Экспорт реестра задач в CSV
-- Inline-клавиатуры для навигации и управления задачами
-
-## Стек
-
-- Python 3.11+
-- aiogram 3.x — асинхронный Telegram-ботфреймворк
-- aiosqlite — асинхронный драйвер SQLite
-- pytest + pytest-asyncio + pytest-cov — тесты и покрытие
-- Docker, systemd — развёртывание
-
-## Структура проекта
-
-```
-src/
-  main.py          — точка входа: инициализация БД, воркеров, polling
-  config.py        — загрузка настроек из переменных окружения
-  database.py      — репозиторий: схема БД, CRUD, аналитика
-  models.py        — дата-классы DTO (User, Task, ExecutionLog)
-  handlers.py      — роутер aiogram: команды, FSM, callback-обработчики
-  keyboards.py     — inline-клавиатуры
-  services.py      — AsyncWorkerPool, ReportGeneratorService
-  states.py        — FSM-состояния для создания задачи
-tests/
-  conftest.py      — фикстуры (tmp_path БД, worker pool)
-  test_database.py — CRUD, каскадное удаление, фильтрация, аналитика
-  test_handlers.py — все callback-и и FSM-переходы
-  test_services.py — воркер-пул, немедленное выполнение, CSV-отчёт
-```
+| Переменная | По умолчанию | Описание |
+|---|---|---|
+| `BOT_TOKEN` | *(обязательно)* | Токен бота от `@BotFather` |
+| `DB_PATH` | `data/tt_bot.db` | Путь к файлу SQLite |
+| `WORKERS_COUNT` | `3` | Количество асинхронных воркеров |
+| `PROBE_TIMEOUT_SEC` | `10` | Таймаут одной проверки (сек) |
+| `SCHEDULER_TICK_SEC` | `15` | Интервал тика планировщика (сек) |
+| `ALLOW_PRIVATE_ENDPOINTS` | `false` | Разрешить приватные/локальные IP (`true` для intranet) |
+| `LOG_RETENTION_DAYS` | `30` | Срок хранения `execution_logs` (дней) |
+| `THROTTLE_RATE_SEC` | `0.4` | Anti-flood лимит на пользователя (сек, `0` — выкл.) |
+| `LOG_FORMAT` | `text` | Формат логов: `text` или `json` (включён в `docker-compose.yml`) |
 
 ## Быстрый старт
 
 ```bash
-# Клонировать репозиторий
 git clone https://github.com/ssrjkk/tt_bot.git
 cd tt_bot
-
-# Установить зависимости
-pip install -r requirements.txt
-
-# Задать переменные окружения
-export BOT_TOKEN="your_bot_token_here"
-export DB_PATH="coursework_var18.db"
-export WORKERS_COUNT=3
-
-# Запустить
-python -m src.main
+cp .env.example .env
+# Пропиши BOT_TOKEN в .env
+docker compose up -d --build
 ```
 
-## Тесты
+## Тесты и проверки качества (оффлайн CI)
 
 ```bash
-pytest --cov=src --cov-report=term-missing
+pip install -r requirements-dev.txt
+make lint
+make test
+make audit
 ```
-
-24 теста, покрытие 96%:
-
-| Модуль | Покрытие |
-|---|---|
-| database.py | 95% |
-| handlers.py | 94% |
-| keyboards.py | 100% |
-| models.py | 100% |
-| services.py | 97% |
-| states.py | 100% |
-
-## Развёртывание
-
-### Docker
-
-```bash
-docker build -t tt_bot .
-docker run -d --name tt_bot \
-  -e BOT_TOKEN=your_token \
-  -e DB_PATH=/data/bot.db \
-  -v bot_data:/data \
-  tt_bot
-```
-
-### systemd
-
-Подготовить каталог и окружение (юнит запускает `/opt/coursework_var18_bot/venv/bin/python`), затем создать `.env` в `/opt/coursework_var18_bot/`:
-
-```bash
-sudo mkdir -p /opt/coursework_var18_bot
-cd /opt/coursework_var18_bot
-python3 -m venv venv
-./venv/bin/pip install -r requirements.txt   # requirements.txt из корня репо
-```
-
-```ini
-BOT_TOKEN=your_token_here
-DB_PATH=/opt/coursework_var18_bot/bot.db
-WORKERS_COUNT=3
-```
-
-```bash
-sudo cp deploy/systemd_bot.service /etc/systemd/system/guap_var18_bot.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now guap_var18_bot.service
-```
-
-## Оптимизации производительности
-
-- Одно персистентное соединение с БД вместо открытия/закрытия на каждый запрос
-- WAL-режим (`PRAGMA journal_mode=WAL`) — устраняет блокировки `database is locked`
-- `PRAGMA synchronous=NORMAL` — баланс между надёжностью и скоростью записи
-- `PRAGMA cache_size=-64000` — 64 MB кэш в памяти
-- `PRAGMA temp_store=MEMORY` — временные таблицы в RAM
-- Три индекса: `tasks(user_id)`, `tasks(status)`, `execution_logs(task_id)`
 
 ---
 
-**SSRJKK** — [GitHub](https://github.com/ssrjkk) · [Telegram](https://t.me/ssrjkk) · [Projects hub](https://ssrjkk.github.io/) · [Bot catalogue](https://t.me/ssrjkk_bot)
+**SSRJKK** — [GitHub](https://github.com/ssrjkk/tt_bot) · [Landing](https://ssrjkk.github.io/tt_bot/) · [Showcase](https://ssrjkk.github.io/tt_bot/showcase/)

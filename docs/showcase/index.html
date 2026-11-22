@@ -1,456 +1,1039 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-theme="paper">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>tt_bot — Telegram-бот для университетских лабораторных — SSRJKK</title>
-<meta name="description" content="Создайте задачу, укажите адрес сервиса и запустите проверку. Асинхронные исполнители обработают очередь, а результаты останутся в SQLite. Python · aiogram 3 · SQLite.">
-<meta name="theme-color" content="#a0d4ee">
-<meta name="color-scheme" content="light">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='5' y='9' width='22' height='18' rx='8' fill='%23b1dff6'/%3E%3Crect x='10' y='3' width='12' height='10' rx='5' fill='%23b1dff6'/%3E%3Crect x='12' y='6' width='8' height='5' rx='2.5' fill='%230a0c10'/%3E%3C/svg%3E">
+<title>tt_bot Showcase — Интерактивный симулятор + SQLite & JSON Logs v2.3 — SSRJKK</title>
+<meta name="description" content="Интерактивная витрина tt_bot v2.3 на развороте блокнота: чат-симулятор Telegram (/add, /incidents, ретрай упавших, порог 1..3, тест IDOR и SSRF), live Execution Trace, SQLite WAL Inspector и JSON-логи.">
+<meta name="theme-color" content="#ebe4d4">
+<link rel="canonical" href="https://ssrjkk.github.io/tt_bot/showcase/">
+<meta property="og:title" content="tt_bot v2.3 Showcase — Интерактивный блокнот и 3-вкладочный инспектор">
+<meta property="og:description" content="Покликайте реальный флоу Telegram-бота v2.3, протестируйте IDOR и SSRF защиту и смотрите live SQLite WAL и JSON-логи.">
+<meta property="og:image" content="https://ssrjkk.github.io/tt_bot/og-card.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://ssrjkk.github.io/tt_bot/showcase/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='3' fill='%23fffdf7' stroke='%231d4ed8' stroke-width='2'/%3E%3Cline x1='10' y1='3' x2='10' y2='29' stroke='%23e16b79' stroke-width='1.6'/%3E%3Cpath d='M13 15l3 3 6-7' fill='none' stroke='%231d4ed8' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- Substitute из спеки: Wotfard → Figtree, но у Figtree нет кириллицы — берём Onest (ближайший округлый геометрический гротеск с кириллицей); Cartograph CF → JetBrains Mono 600 -->
-<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --paper:#ffffff;--ink:#0a0c10;--blurple:#4242fa;--raspberry:#e60067;
-  --sky:#a0d4ee;--cloud:#b1dff6;--mist:#ddeef8;--dusk:#5a6072;
-  --harbor:#294e60;--slate:#262d40;--gunmetal:#3d455c;
-  --sans:'Onest',Verdana,sans-serif;
-  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+  --desk:#ebe4d4;
+  --desk-dot:#d2c8b4;
+  --paper:#fffdf7;
+  --sheet-border:#bfb5a0;
+  --line:#d8e3f2;
+  --margin:#df7d8a;
+  --ink:#111827;
+  --muted:#475467;
+  --pen:#1d4ed8;
+  --red:#be123c;
+  --green:#0d6e4f;
+  --card-bg:#ffffff;
+  --tg-bg:#0e1621;
+  --tg-panel:#17212b;
+  --tg-msg:#182533;
+  --tg-user:#2b5278;
+  --tg-btn:#24394f;
+  --tg-btn-h:#314d6b;
+  --hard-shadow:3px 3px 0 rgba(17,24,39,.9);
+  --hard-shadow-sm:2px 2px 0 rgba(17,24,39,.85);
+  --ease-spring:cubic-bezier(.22,1.28,.36,1);
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+  --hand:'Caveat','Comic Sans MS',cursive;
+}
+html[data-theme="blueprint"]{
+  --desk:#050b16;
+  --desk-dot:#162848;
+  --paper:#0b1930;
+  --sheet-border:#2d538a;
+  --line:rgba(56,189,248,.14);
+  --margin:rgba(251,113,133,.5);
+  --ink:#edf5ff;
+  --muted:#94b0d4;
+  --pen:#38bdf8;
+  --red:#fb7185;
+  --green:#34d399;
+  --card-bg:#0f213d;
+  --hard-shadow:3px 3px 0 rgba(56,189,248,.45);
+  --hard-shadow-sm:2px 2px 0 rgba(56,189,248,.4);
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:24px}
-body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+body{
+  margin:0;color:var(--ink);font:400 14.5px/1.55 var(--sans);
+  background-color:var(--desk);
+  background-image:radial-gradient(var(--desk-dot) 1.25px, transparent 1.25px);
+  background-size:20px 20px;padding:18px 14px 56px;
+  transition:background-color .22s ease,color .2s ease;
+}
 a{color:inherit;text-decoration:none}
-img,svg{display:block}
-a:focus-visible,button:focus-visible{outline:2px solid var(--blurple);outline-offset:3px;border-radius:4px}
-.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-.skip{position:fixed;left:16px;top:-48px;z-index:50;background:var(--slate);color:var(--paper);height:42px;display:inline-flex;align-items:center;padding:0 16px;border-radius:4px;font:500 16px/1.5 var(--sans);transition:top .2s}
-.skip:focus{top:12px}
+button{font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--pen);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.kbd{display:inline-block;padding:2px 5px;border-radius:3px;background:rgba(128,128,128,.16);font:700 10.5px/1 var(--mono)}
 
-/* ---------- type roles (по type scale спеки) ---------- */
-h1,h2,h3{font-weight:600;margin:0;color:var(--ink)}
-h1{font-size:32px;line-height:1.5}
-h2,h3{font-size:22px;line-height:1.5}
-.eyebrow{display:inline-block;font:500 16px/24px var(--sans);letter-spacing:2px;text-transform:uppercase;color:var(--raspberry)}
-.sub{font:500 17px/1.5 var(--sans);color:var(--dusk)}
-.wordmark{font:500 24px/1.5 var(--sans);letter-spacing:-1px;color:var(--blurple)}
-.chip{font:600 15.94px/1.5 var(--mono);background:var(--mist);border-radius:4px;padding:1px 7px}
-.h-chip{font:600 20.63px/1.5 var(--mono);background:var(--mist);border-radius:4px;padding:0 8px}
-
-/* ---------- header ---------- */
-.sitehead{position:absolute;top:0;left:0;right:0;z-index:20}
-.nav-inner{max-width:1100px;margin:0 auto;height:48px;display:flex;align-items:center;padding:0 16px}
-.nav-inner .wordmark{margin-right:8px}
-.topnav{display:flex}
-.topnav a{padding:0 16px;font:400 16px/1.5 var(--sans);color:var(--ink)}
-.topnav a:hover{text-decoration:underline}
-.head-icons{margin-left:auto;display:flex;gap:4px}
-.icon-btn{width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:var(--ink)}
-.icon-btn:hover{background:rgba(10,12,16,.07)}
-.icon-btn svg{width:18px;height:18px}
-
-/* ---------- hero ---------- */
-.hero{position:relative;background:var(--sky);padding:120px 16px 264px;text-align:center;overflow:hidden}
-.hero-inner{position:relative;z-index:2;max-width:680px;margin:0 auto}
-.hero h1{margin-top:10px}
-.hero .intro{font:500 17px/1.5 var(--sans);color:var(--dusk);max-width:600px;margin:12px auto 0}
-.cta-row{display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;margin-top:32px}
-.btn-slate{display:inline-flex;align-items:center;gap:12px;height:42px;padding:0 18px 0 6px;border-radius:4px;background:var(--slate);color:var(--paper);font:500 16px/1.5 var(--sans)}
-.btn-slate:hover{filter:brightness(1.2)}
-.icon-well{width:30px;height:30px;border-radius:2px;background:var(--gunmetal);display:inline-flex;align-items:center;justify-content:center;flex:none}
-.icon-well svg{width:14px;height:14px}
-.link-strong{display:inline-flex;align-items:center;gap:6px;font:600 16px/1.5 var(--sans);color:var(--ink)}
-.link-strong:hover{text-decoration:underline}
-.hero-clouds{position:absolute;left:0;right:0;bottom:-1px;width:100%;height:244px;z-index:1}
-
-/* ---------- sections ---------- */
-.section{margin-top:104px}
-.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
-.narrow{max-width:808px;margin-left:auto;margin-right:auto}
-
-/* возможности — без карточек, как записи фида */
-.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:48px 64px;margin-top:32px}
-.entry h3{font-size:22px}
-.entry h3 .h-chip{font-size:19px}
-.entry .sub{margin-top:4px}
-.entry p{margin:8px 0 0;font:400 16px/1.5 var(--sans)}
-.section-lead{font:500 17px/1.5 var(--sans);color:var(--dusk);margin:0;max-width:640px}
-
-/* процесс */
-.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;margin-top:32px}
-.tag{display:inline-block;background:var(--cloud);border-radius:8px;padding:5px 12px;font:400 14px/21px var(--sans);color:var(--ink)}
-.step h3{margin:14px 0 8px}
-.step p{margin:0;font:400 16px/1.5 var(--sans)}
-
-/* демо: учебная очередь */
-.queue{list-style:none;margin:32px 0 0;padding:0;max-width:760px}
-.qrow{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--mist)}
-.qrow:last-child{border-bottom:1px solid var(--mist)}
-.qleft{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
-.qleft .chip{white-space:nowrap}
-.addr{font:400 14px/1.5 var(--sans);color:var(--dusk);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.qstatus{flex:none;display:inline-flex;align-items:center;gap:8px;background:var(--cloud);border-radius:8px;padding:5px 12px;font:400 14px/21px var(--sans);color:var(--ink);white-space:nowrap}
-.qdot{width:8px;height:8px;border-radius:50%;background:var(--dusk);flex:none}
-.qrow[data-state="checking"] .qstatus{background:var(--mist)}
-.qrow[data-state="checking"] .qdot{animation:pulse 1s ease-in-out infinite}
-.qrow[data-state="done"] .qdot{background:var(--harbor)}
-@keyframes pulse{50%{opacity:.25}}
-.run-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-top:28px}
-.qlog{font:400 14px/1.5 var(--sans);color:var(--dusk);margin:18px 0 0;max-width:760px}
-.honest{font:400 14px/1.5 var(--sans);color:var(--dusk);margin:20px 0 0;max-width:640px}
-
-/* запуск */
-.code-tools{display:flex;justify-content:flex-end;margin-bottom:10px}
-.copy{height:36px;padding:0 14px;border-radius:4px;border:0;cursor:pointer;background:var(--slate);color:var(--paper);font:500 14px/1.5 var(--sans)}
-.copy:hover{filter:brightness(1.25)}
-.codeblock{background:var(--mist);border-radius:8px;padding:20px 24px;max-width:760px}
-pre{margin:0;font:600 15.94px/1.5 var(--mono);color:var(--ink);overflow-x:auto;-webkit-overflow-scrolling:touch}
-pre .dim{color:var(--dusk)}
-
-/* футер: небо с облачным краем */
-.footer{position:relative;margin-top:104px;background:linear-gradient(#a0d4ee,#7dc4e8);padding:168px 0 56px;overflow:hidden}
-.footer-clouds{position:absolute;top:-1px;left:0;width:100%;height:96px}
-.fcols{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:32px}
-.fbrand p{margin:8px 0 0;font:400 14px/1.5 var(--sans);max-width:300px}
-.fbrand .who{margin-top:16px;font:500 14px/1.5 var(--sans);color:var(--harbor)}
-.fcol h4{margin:0 0 12px;font:500 14px/1.5 var(--sans);color:var(--harbor);text-transform:uppercase}
-.fcol a,.fcol span{display:block;font:400 14px/1.5 var(--sans);color:var(--ink);padding:2px 0}
-.fcol a:hover{text-decoration:underline}
-.fbottom{max-width:1100px;margin:44px auto 0;padding:0 24px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font:400 14px/1.5 var(--sans);color:var(--harbor)}
-
-/* ---------- adaptive ---------- */
-@media(max-width:960px){
-  .topnav{display:none}
-  .fgrid{grid-template-columns:1fr;gap:40px}
-  .pgrid{grid-template-columns:1fr 1fr;gap:40px 24px}
-  .fgrid-footer{grid-template-columns:1fr 1fr;row-gap:36px}
+.topbar{
+  max-width:1300px;margin:0 auto 16px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
 }
-@media(max-width:600px){
-  h1{font-size:26px}
-  .hero{padding:100px 20px 216px}
-  .hero-clouds{height:200px}
-  .section{margin-top:72px}
-  .pgrid{grid-template-columns:1fr}
-  .fgrid-footer{grid-template-columns:1fr}
-  .footer{padding-top:140px}
-  .cta-row{gap:16px}
+.crumb{
+  display:inline-flex;align-items:center;gap:10px;font:700 13.5px/1 var(--mono);
+  background:var(--card-bg);padding:9px 14px;border-radius:6px;
+  border:2px solid var(--ink);box-shadow:var(--hard-shadow-sm);
 }
-@media(prefers-reduced-motion:reduce){
-  html{scroll-behavior:auto}
-  *,*:before,*:after{transition:none!important;animation:none!important}
+html[data-theme="blueprint"] .crumb{border-color:var(--sheet-border)}
+.crumb a{color:var(--pen)}
+.crumb a:hover{text-decoration:underline}
+.top-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.top-note{font:700 20px/1 var(--hand);color:var(--pen)}
+.ctrl-pill{
+  display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 11px;
+  border-radius:6px;border:2px solid var(--ink);background:var(--card-bg);color:var(--ink);
+  font:700 11.5px/1 var(--mono);box-shadow:var(--hard-shadow-sm);
 }
+html[data-theme="blueprint"] .ctrl-pill{border-color:var(--sheet-border)}
+.ctrl-pill:hover{border-color:var(--pen);color:var(--pen)}
+
+/* ---------- Open Notebook Spread ---------- */
+.spread{
+  position:relative;max-width:1300px;margin:0 auto;
+  display:grid;grid-template-columns:1.05fr 1fr;
+  background:var(--paper);border:2px solid var(--ink);border-radius:10px;
+  box-shadow:0 26px 56px rgba(0,0,0,.22);overflow:hidden;
+}
+html[data-theme="blueprint"] .spread{border-color:var(--sheet-border)}
+.paper-grain{position:absolute;inset:0;width:100%;height:100%;opacity:.03;pointer-events:none;mix-blend-mode:multiply;z-index:1}
+.page{
+  position:relative;z-index:2;padding:24px 26px 30px;
+  background-color:var(--paper);
+  background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 31px,var(--line) 31px,var(--line) 32px);
+}
+html[data-theme="blueprint"] .page{
+  background-image:
+    linear-gradient(to right, rgba(56,189,248,.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56,189,248,.14) 1px, transparent 1px);
+  background-size:32px 32px;
+}
+.page-left{border-right:2px solid var(--ink);box-shadow:inset -16px 0 24px -18px rgba(0,0,0,.24);padding-left:44px}
+html[data-theme="blueprint"] .page-left{border-right-color:var(--sheet-border)}
+.page-left::before{content:"";position:absolute;top:0;bottom:0;left:28px;width:2px;background:var(--margin);opacity:.8}
+.page-right{box-shadow:inset 16px 0 24px -18px rgba(0,0,0,.24)}
+
+.page-title{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px}
+.page-title h1,.page-title h2{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em}
+.hand-tag{font:700 18px/1 var(--hand);color:var(--red)}
+
+/* ---------- Telegram Phone Frame + Chat Feed + Alert Modal ---------- */
+.tg-phone{
+  position:relative;background:var(--tg-bg);color:#e8eef7;
+  border-radius:12px;border:2px solid #1e293b;box-shadow:var(--hard-shadow);overflow:hidden;
+}
+.tg-bar{
+  background:var(--tg-panel);padding:10px 14px;
+  display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #223040;gap:10px;flex-wrap:wrap;
+}
+.tg-bot-id{display:flex;align-items:center;gap:10px}
+.tg-ava{
+  width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#38bdf8);
+  display:grid;place-items:center;font:800 13px/1 var(--mono);color:#fff;
+}
+.tg-name{font-weight:700;font-size:13.8px;line-height:1.2}
+.tg-sub{font-size:11.2px;color:#8ba1b8}
+.tg-cmds{display:flex;gap:5px;flex-wrap:wrap}
+.tg-cmd{
+  background:#223142;color:#cfe2f7;border:1px solid #354b63;border-radius:5px;
+  padding:4px 8px;font:700 11px/1 var(--mono);
+}
+.tg-cmd:hover{background:#2d425a}
+
+.tg-feed{
+  padding:12px 14px;height:455px;overflow-y:auto;
+  display:flex;flex-direction:column;gap:8px;
+}
+.tg-alert-banner{
+  display:none;background:rgba(190,18,60,.2);border:1.5px solid rgba(251,113,133,.6);
+  border-radius:8px;padding:9px 11px;font-size:12.6px;
+}
+.tg-alert-banner.ok{background:rgba(13,110,79,.26);border-color:rgba(52,211,153,.6)}
+.tg-alert-banner.warn{background:rgba(180,83,9,.26);border-color:rgba(251,191,36,.6)}
+.tg-alert-banner.show{display:block}
+
+.tg-user-msg{
+  align-self:flex-end;background:var(--tg-user);color:#f1f5f9;
+  border-radius:10px 10px 3px 10px;padding:7px 11px;
+  font:500 12.6px/1.35 var(--mono);max-width:85%;
+}
+.tg-bubble{
+  background:var(--tg-msg);border-radius:10px 10px 10px 3px;
+  padding:12px 13px;font-size:13.3px;line-height:1.48;white-space:pre-line;
+  border:1px solid rgba(148,163,184,.12);
+}
+.tg-bubble code{font:500 11.8px/1.3 var(--mono);background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;color:#9fd3ff}
+.tg-ts{display:block;text-align:right;font:500 10px/1 var(--mono);color:#7a93ad;margin-top:6px}
+.tg-kb{display:flex;flex-direction:column;gap:5px}
+.tg-row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:5px}
+.tg-btn{
+  background:var(--tg-btn);color:#f1f7ff;border:1px solid rgba(148,163,184,.16);
+  border-radius:7px;padding:8px 6px;font-size:12px;font-weight:600;text-align:center;
+  transition:background .12s,transform .12s var(--ease-spring);
+}
+.tg-btn:hover{background:var(--tg-btn-h)}
+.tg-btn:active{transform:scale(.98)}
+.tg-input-row{display:flex;gap:8px;padding:10px 12px;background:var(--tg-panel);border-top:1px solid #223040}
+.tg-input-row input{
+  flex:1;background:#0e1621;color:#fff;border:1px solid #30455c;border-radius:7px;
+  padding:8px 10px;font:500 12.8px/1.2 var(--mono);
+}
+.tg-send{background:#1d4ed8;color:#fff;border:0;border-radius:7px;padding:0 14px;font-weight:700;font-size:12.8px}
+
+/* Simulated Telegram show_alert=True Modal inside Phone */
+.tg-modal{
+  position:absolute;inset:0;z-index:20;background:rgba(7,12,20,.72);
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+.tg-modal.open{display:flex}
+.tg-modal-box{
+  width:100%;max-width:300px;background:#1e2c3a;color:#f1f5f9;
+  border-radius:12px;border:1px solid #39516b;padding:16px;text-align:left;
+  box-shadow:0 18px 36px rgba(0,0,0,.5);
+}
+.tg-modal-box h4{margin:0 0 8px;font:700 14px/1.2 var(--sans);color:#fb7185}
+.tg-modal-box p{margin:0 0 14px;font:500 12.8px/1.45 var(--sans);color:#cbd5e1}
+.tg-modal-ok{
+  width:100%;padding:8px;border:0;border-radius:7px;background:#2b5278;color:#fff;
+  font:700 13px/1 var(--sans);
+}
+
+.sim-helpers{margin-top:12px;display:flex;gap:7px;flex-wrap:wrap}
+.mini-btn{
+  background:var(--card-bg);color:var(--ink);border:2px solid var(--ink);
+  border-radius:6px;padding:6px 10px;font:700 11.6px/1 var(--mono);box-shadow:var(--hard-shadow-sm);
+}
+html[data-theme="blueprint"] .mini-btn{border-color:var(--sheet-border)}
+.mini-btn:hover{border-color:var(--pen);color:var(--pen)}
+.mini-btn.danger:hover{border-color:var(--red);color:var(--red)}
+
+/* ---------- Right Page: 3-Tab Inspector & Spec Diff Matrix ---------- */
+.insp-tabs{display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap}
+.insp-tab{
+  background:var(--card-bg);color:var(--muted);border:2px solid var(--ink);
+  border-radius:6px;padding:6px 11px;font:700 11.5px/1 var(--mono);
+}
+html[data-theme="blueprint"] .insp-tab{border-color:var(--sheet-border)}
+.insp-tab[aria-selected="true"]{background:var(--pen);color:#fff;border-color:var(--pen);box-shadow:var(--hard-shadow-sm)}
+html[data-theme="blueprint"] .insp-tab[aria-selected="true"]{color:#060e1d}
+
+.trace-card{
+  background:#0f172a;color:#e2e8f0;border:2px solid var(--ink);border-radius:8px;
+  padding:13px 15px;font:500 12px/1.5 var(--mono);margin-bottom:16px;
+  box-shadow:var(--hard-shadow);min-height:175px;max-height:215px;overflow-y:auto;
+}
+html[data-theme="blueprint"] .trace-card{border-color:var(--sheet-border)}
+.trace-head{display:flex;justify-content:space-between;align-items:center;color:#94a3b8;font-size:11px;margin-bottom:8px}
+.trace-lines{margin:0;padding:0;list-style:none}
+.trace-lines li{padding:3px 0;border-bottom:1px dashed rgba(148,163,184,.16);word-break:break-word}
+.trace-lines li:last-child{border-bottom:0}
+.t-mod{color:#7dd3fc}
+.t-ok{color:#4ade80}
+.t-warn{color:#fb7185}
+
+
+.log-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.lf-chip{
+  padding:3px 7px;border:1px solid #334155;border-radius:4px;
+  background:#1e293b;color:#cbd5e1;font:700 10.5px/1 var(--mono);
+}
+.lf-chip[aria-pressed="true"]{background:var(--pen);color:#fff;border-color:var(--pen)}
+
+.sql-table{width:100%;border-collapse:collapse;font-size:11.2px;color:#dbeafe}
+.sql-table th{text-align:left;color:#7dd3fc;border-bottom:1px solid rgba(125,211,252,.28);padding:4px 5px}
+.sql-table td{padding:4px 5px;border-bottom:1px dashed rgba(148,163,184,.16)}
+
+/* Spec Diff Table (v1.0 vs v2.3) */
+.spec-matrix{
+  width:100%;border-collapse:collapse;margin-top:8px;
+  background:var(--card-bg);border:2px solid var(--ink);box-shadow:var(--hard-shadow);
+  font-size:12.4px;
+}
+html[data-theme="blueprint"] .spec-matrix{border-color:var(--sheet-border)}
+.spec-matrix th,.spec-matrix td{padding:8px 10px;border-bottom:1px dashed var(--line);text-align:left}
+.spec-matrix th{font:700 11px/1 var(--mono);text-transform:uppercase;background:rgba(29,78,216,.08);color:var(--pen)}
+.spec-matrix tr:last-child td{border-bottom:0}
+.bad-cell{color:var(--red);font-family:var(--mono);font-size:11.5px}
+.good-cell{color:var(--green);font-weight:700;font-family:var(--mono);font-size:11.5px}
+
+.inv-list{list-style:none;margin:0 0 14px;padding:0}
+.inv-list li{
+  display:flex;align-items:flex-start;gap:9px;padding:6px 6px;
+  border-bottom:1px dashed rgba(29,78,216,.22);font-size:13px;
+  transition:background .18s,transform .18s var(--ease-spring);
+}
+.inv-mark{font:800 14px/1.2 var(--mono);color:var(--pen);flex:none}
+.inv-list li.hit{background:rgba(56,189,248,.16);border-radius:5px;transform:translateX(3px)}
+
+/* Command Palette & Toast */
+.cmdk-backdrop{position:fixed;inset:0;z-index:90;background:rgba(10,15,28,.62);backdrop-filter:blur(4px);display:none;align-items:flex-start;justify-content:center;padding:11vh 16px 24px}
+.cmdk-backdrop.open{display:flex}
+.cmdk-dialog{width:100%;max-width:520px;background:var(--paper);color:var(--ink);border:2px solid var(--ink);border-radius:10px;box-shadow:6px 6px 0 rgba(17,24,39,.9);overflow:hidden}
+.cmdk-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:2px solid var(--ink)}
+.cmdk-head input{flex:1;border:0;background:transparent;color:var(--ink);font:600 14px/1.2 var(--mono);outline:none}
+.cmdk-list{list-style:none;margin:0;padding:6px;max-height:300px;overflow-y:auto}
+.cmdk-item{width:100%;display:flex;align-items:center;justify-content:space-between;padding:9px 11px;border:0;border-radius:6px;background:transparent;color:var(--ink);text-align:left;font:600 13px/1.2 var(--sans)}
+.cmdk-item.active,.cmdk-item:hover{background:var(--pen);color:#fff}
+.toast-stack{position:fixed;right:18px;bottom:18px;z-index:85;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--card-bg);color:var(--ink);border:2px solid var(--ink);border-left:5px solid var(--pen);border-radius:6px;padding:8px 12px;font:600 12px/1.3 var(--mono);box-shadow:var(--hard-shadow-sm)}
+.toast.err{border-left-color:var(--red)}
+.toast.ok{border-left-color:var(--green)}
+
+@media(max-width:980px){
+  .spread{grid-template-columns:1fr}
+  .page-left{border-right:0;border-bottom:2px solid var(--ink);padding-left:32px}
+  .page-left::before{left:18px}
+  .crumb a{display:inline-block;min-height:24px}
+  .tg-cmd,.lf-chip{min-height:24px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
-<a class="skip" href="#main">К содержимому</a>
-
-<!-- переиспользуемый глиф бота-талисмана -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <g id="botdef">
-      <ellipse cx="42" cy="94" rx="40" ry="8" fill="#294e60" opacity=".14"/>
-      <rect x="-4" y="50" width="12" height="20" rx="6" fill="#b1dff6"/>
-      <rect x="76" y="50" width="12" height="20" rx="6" fill="#b1dff6"/>
-      <rect x="6" y="32" width="72" height="56" rx="24" fill="#b1dff6"/>
-      <rect x="18" y="14" width="48" height="36" rx="15" fill="#b1dff6"/>
-      <rect x="22" y="22" width="40" height="20" rx="9" fill="#0a0c10"/>
-      <circle cx="33" cy="32" r="3.2" fill="#a0d4ee"/>
-      <circle cx="51" cy="32" r="3.2" fill="#a0d4ee"/>
-      <path d="M42 14V6" stroke="#0a0c10" stroke-width="3" stroke-linecap="round"/>
-      <circle cx="42" cy="4" r="4" fill="#4242fa"/>
-    </g>
-  </defs>
-</svg>
-
-<header class="sitehead">
-  <div class="nav-inner">
-    <a class="wordmark" href="./">tt_bot</a>
-    <nav class="topnav" aria-label="Основная навигация">
-      <a href="#features">Возможности</a>
-      <a href="#process">Как это работает</a>
-      <a href="#demo">Демо</a>
-      <a href="#start">Запуск</a>
-    </nav>
-    <div class="head-icons">
-      <a class="icon-btn" href="https://github.com/ssrjkk/tt_bot#readme" aria-label="Документация (README)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5C7 4 10 4.1 12 6c2-1.9 5-2 8-.5V19c-3-1.5-6-1.4-8 .5-2-1.9-5-2-8-.5Z"/><path d="M12 6v13.5"/></svg>
-      </a>
-      <a class="icon-btn" href="https://github.com/ssrjkk/tt_bot" aria-label="Репозиторий на GitHub">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
-      </a>
-    </div>
+<div class="topbar">
+  <div class="crumb">
+    <a href="../">← tt_bot</a>
+    <span>/</span>
+    <span>showcase v2.3</span>
   </div>
-</header>
-
-<main id="main">
-<section class="hero">
-  <div class="hero-inner">
-    <span class="eyebrow">Telegram-бот для университетских лабораторных</span>
-    <h1>От задачи до понятного отчёта.</h1>
-    <p class="intro">Создайте задачу, укажите адрес сервиса и запустите проверку. Асинхронные исполнители обработают очередь, а результаты останутся в SQLite.</p>
-    <div class="cta-row">
-      <a class="btn-slate" href="https://github.com/ssrjkk/tt_bot#readme">
-        <span class="icon-well" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span>
-        Открыть репозиторий
-      </a>
-      <a class="link-strong" href="https://github.com/ssrjkk/tt_bot#readme">Документация <span aria-hidden="true">→</span></a>
-    </div>
+  <div class="top-right">
+    <span class="top-note">✎ Вставь любой URL в чат или нажми ⌘K</span>
+    <button class="ctrl-pill" id="cmdk-open" type="button">Палитра <span class="kbd">⌘K</span></button>
+    <button class="ctrl-pill" id="theme-toggle" type="button">📐 Чертёж</button>
   </div>
-  <svg class="hero-clouds" viewBox="0 0 1440 244" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-    <g fill="#ddeef8">
-      <ellipse cx="60" cy="205" rx="160" ry="75"/>
-      <ellipse cx="420" cy="215" rx="190" ry="85"/>
-      <ellipse cx="1090" cy="210" rx="180" ry="80"/>
-      <ellipse cx="1400" cy="225" rx="150" ry="70"/>
-    </g>
-    <g fill="#b1dff6">
-      <ellipse cx="180" cy="240" rx="180" ry="80"/>
-      <ellipse cx="980" cy="248" rx="160" ry="70"/>
-      <ellipse cx="1290" cy="244" rx="190" ry="85"/>
-    </g>
-    <g fill="none" stroke-linecap="round" stroke-dasharray="1 12" stroke-width="3">
-      <path d="M600 150A140 140 0 0 1 860 108" stroke="#4242fa" opacity=".5"/>
-      <path d="M628 176A112 112 0 0 1 852 146" stroke="#e60067" opacity=".38"/>
-      <path d="M652 98A92 92 0 0 1 812 72" stroke="#7dc4e8"/>
-    </g>
-    <g fill="#ffffff">
-      <ellipse cx="520" cy="268" rx="230" ry="95"/>
-      <ellipse cx="760" cy="258" rx="270" ry="100"/>
-      <ellipse cx="1020" cy="272" rx="230" ry="92"/>
-      <rect x="0" y="206" width="1440" height="40"/>
-    </g>
-    <use href="#botdef" transform="translate(690,70)"/>
+</div>
+
+<main class="spread">
+  <svg class="paper-grain" aria-hidden="true">
+    <filter id="spreadNoise"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/></filter>
+    <rect width="100%" height="100%" filter="url(#spreadNoise)"/>
   </svg>
-</section>
 
-<section class="section" id="features">
-  <div class="wrap">
-    <span class="eyebrow">Возможности</span>
-    <p class="section-lead">Бот берёт на себя рутину приёма лабораторных: от команды в чате до готовой таблицы для преподавателя.</p>
-    <div class="fgrid">
-      <div class="entry">
-        <h3>Создание задач в чате <span class="h-chip">/task</span></h3>
-        <p>Преподаватель создаёт задачу прямо в Telegram: название и адрес сервиса — остальное бот делает сам.</p>
+  <!-- LEFT PAGE -->
+  <section class="page page-left" aria-label="Симулятор Telegram-бота">
+    <div class="page-title">
+      <h1>Интерактивный симулятор @tt_bot</h1>
+      <span class="hand-tag">оффлайн v2.3</span>
+    </div>
+
+    <div class="tg-phone">
+      <div class="tg-bar">
+        <div class="tg-bot-id">
+          <div class="tg-ava">tt</div>
+          <div>
+            <div class="tg-name">tt_bot Monitor v2.3</div>
+            <div class="tg-sub" id="tg-sub">online · aiogram 3 · SSL + SQLite WAL</div>
+          </div>
+        </div>
+        <div class="tg-cmds">
+          <button class="tg-cmd" id="btn-cmd-start" type="button">/start</button>
+          <button class="tg-cmd" id="btn-cmd-status" type="button">/status</button>
+          <button class="tg-cmd" id="btn-cmd-inc" type="button">/incidents</button>
+          <button class="tg-cmd" id="btn-cmd-stats" type="button">/stats</button>
+        </div>
       </div>
-      <div class="entry">
-        <h3>Асинхронная очередь <span class="h-chip">asyncio</span></h3>
-        <p>Работы не ждут друг друга: пул исполнителей на asyncio разбирает очередь параллельно, пока бот остаётся отзывчивым.</p>
+
+      <div class="tg-feed" id="tg-feed">
+        <div class="tg-alert-banner" id="tg-alert" aria-live="polite"></div>
+        <div id="tg-history" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div class="tg-bubble" id="tg-msg"></div>
+        <div class="tg-kb" id="tg-kb"></div>
       </div>
-      <div class="entry">
-        <h3>Проверка доступности сервисов</h3>
-        <p>Перед приёмом работы бот проверяет, отвечает ли указанный адрес, и честно пишет результат — доступен сервис или нет.</p>
-      </div>
-      <div class="entry">
-        <h3>CSV-отчёты <span class="h-chip">.csv</span></h3>
-        <p>Результаты проверок выгружаются в CSV для преподавателя: таблица открывается где угодно, от Excel до Google Sheets.</p>
-      </div>
-      <div class="entry">
-        <h3>Статусы и история</h3>
-        <p>Каждая задача проходит понятные статусы, а вся история остаётся в SQLite — можно вернуться и посмотреть, что было.</p>
-      </div>
-      <div class="entry">
-        <h3>Лёгкий деплой на любой машине</h3>
-        <p>Python 3.11, aiogram 3 и SQLite — ничего лишнего. Бот поднимается на любой машине, от старого ноута до дешёвого VPS.</p>
+
+      <form class="tg-input-row" id="tg-form">
+        <input id="tg-input" type="text" autocomplete="off" placeholder="/add PayAPI https://pay.example/health 5">
+        <button class="tg-send" type="submit">→</button>
+      </form>
+
+      <!-- Telegram show_alert=True Modal -->
+      <div class="tg-modal" id="tg-modal" role="alertdialog" aria-modal="true" aria-label="Уведомление Telegram">
+        <div class="tg-modal-box">
+          <h4 id="tg-modal-title">Telegram Alert</h4>
+          <p id="tg-modal-body"></p>
+          <button class="tg-modal-ok" id="tg-modal-ok" type="button">OK</button>
+        </div>
       </div>
     </div>
-  </div>
-</section>
 
-<section class="section" id="process">
-  <div class="wrap">
-    <span class="eyebrow">Как это работает</span>
-    <h2>Четыре шага от задачи до отчёта</h2>
-    <div class="pgrid">
-      <div class="step">
-        <span class="tag">Шаг 1</span>
-        <h3>Создание задачи</h3>
-        <p>Команда в чате: название работы и адрес сервиса, который нужно проверить.</p>
-      </div>
-      <div class="step">
-        <span class="tag">Шаг 2</span>
-        <h3>Очередь asyncio</h3>
-        <p>Задача попадает в очередь; исполнители разбирают её без блокировки бота.</p>
-      </div>
-      <div class="step">
-        <span class="tag">Шаг 3</span>
-        <h3>Проверка сервиса</h3>
-        <p>Бот обращается по адресу и фиксирует, отвечает ли сервис, — результат честный.</p>
-      </div>
-      <div class="step">
-        <span class="tag">Шаг 4</span>
-        <h3>CSV-отчёт</h3>
-        <p>Итоги проверок выгружаются в CSV — преподаватель получает готовую таблицу.</p>
+    <div class="sim-helpers">
+      <button class="mini-btn" id="sim-add" type="button">⚡ /add DemoAPI</button>
+      <button class="mini-btn" id="sim-tick" type="button">⏱ Тик планировщика</button>
+      <button class="mini-btn" id="sim-ssrf" type="button">🛡 SSRF (127.0.0.1)</button>
+      <button class="mini-btn danger" id="sim-idor" type="button">🔒 IDOR-атака</button>
+      <button class="mini-btn danger" id="sim-incident" type="button">🔴 Инцидент (2/2)</button>
+    </div>
+  </section>
+
+  <!-- RIGHT PAGE -->
+  <section class="page page-right" aria-label="Инспектор архитектуры, БД и логов">
+    <div class="page-title">
+      <h2>Live-инспектор под капотом</h2>
+      <span class="hand-tag">3 слоя в реальном времени</span>
+    </div>
+
+    <div class="insp-tabs" role="tablist">
+      <button class="insp-tab" type="button" role="tab" aria-selected="true" data-panel="trace">Execution Trace</button>
+      <button class="insp-tab" type="button" role="tab" aria-selected="false" data-panel="sql">SQLite WAL</button>
+      <button class="insp-tab" type="button" role="tab" aria-selected="false" data-panel="json">JSON Logs</button>
+    </div>
+
+    <div class="trace-card" id="panel-trace" aria-live="polite">
+      <div class="trace-head"><span>EXECUTION TRACE · src/</span><span id="trace-step">ready</span></div>
+      <ul class="trace-lines" id="trace-lines"></ul>
+    </div>
+
+    <div class="trace-card" id="panel-sql" style="display:none">
+      <div class="trace-head"><span>PRAGMA journal_mode=WAL · tasks</span><span id="sql-count">3 rows</span></div>
+      <div style="overflow-x:auto">
+        <table class="sql-table" id="sql-table">
+          <thead><tr><th>id</th><th>title</th><th>status</th><th>iv</th><th>thr</th><th>fails</th></tr></thead>
+          <tbody></tbody>
+        </table>
       </div>
     </div>
-  </div>
-</section>
 
-<section class="section narrow" id="demo">
-  <span class="eyebrow">Демо</span>
-  <h2>Учебная очередь задач</h2>
-  <p class="section-lead" style="margin-top:12px">Нажмите «Запустить проверку» — очередь пройдёт цикл прямо на этой странице.</p>
-  <ul class="queue">
-    <li class="qrow" data-state="done">
-      <div class="qleft"><span class="chip">lab-01</span><span class="addr">http://127.0.0.1:8000/health</span></div>
-      <span class="qstatus"><i class="qdot" aria-hidden="true"></i><span class="qtxt">готово</span></span>
-    </li>
-    <li class="qrow" data-state="queue">
-      <div class="qleft"><span class="chip">lab-02</span><span class="addr">http://127.0.0.1:8001/health</span></div>
-      <span class="qstatus"><i class="qdot" aria-hidden="true"></i><span class="qtxt">в очереди</span></span>
-    </li>
-    <li class="qrow" data-state="queue">
-      <div class="qleft"><span class="chip">lab-03</span><span class="addr">http://127.0.0.1:8002/health</span></div>
-      <span class="qstatus"><i class="qdot" aria-hidden="true"></i><span class="qtxt">в очереди</span></span>
-    </li>
-  </ul>
-  <div class="run-row">
-    <button class="btn-slate" type="button" id="run-btn">
-      <span class="icon-well" aria-hidden="true"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.8v10.4c0 .62.68 1 1.21.67l8.1-5.2a.8.8 0 0 0 0-1.34l-8.1-5.2A.8.8 0 0 0 4 2.8Z"/></svg></span>
-      <span id="run-label">Запустить проверку</span>
-    </button>
-  </div>
-  <p class="qlog" aria-live="polite" id="qlog">Очередь готова к учебному запуску.</p>
-  <p class="honest">Учебная очередь. Это локальная иллюстрация: страница не подключается к реальным сервисам и не отправляет данные. Задачи и адреса — примеры.</p>
-</section>
+    <div class="trace-card" id="panel-json" style="display:none">
+      <div class="trace-head"><span>LOG_FORMAT=json · JsonLogFormatter</span><span id="json-count">0 events</span></div>
+      <div class="log-tools" role="group" aria-label="Фильтр JSON логов">
+        <button class="lf-chip" type="button" data-lvl="ALL" aria-pressed="true">ALL</button>
+        <button class="lf-chip" type="button" data-lvl="INFO" aria-pressed="false">INFO</button>
+        <button class="lf-chip" type="button" data-lvl="WARNING" aria-pressed="false">WARN</button>
+        <button class="lf-chip" type="button" data-lvl="ERROR" aria-pressed="false">ERROR</button>
+        <button class="lf-chip" type="button" id="copy-json-logs" style="margin-left:auto">Copy</button>
+      </div>
+      <ul class="trace-lines" id="json-lines"></ul>
+    </div>
 
-<section class="section narrow" id="start">
-  <span class="eyebrow">Запуск</span>
-  <h2>Клонировать и запустить</h2>
-  <p class="section-lead" style="margin-top:12px">Понадобятся Python 3.11+ и токен от @BotFather. Переменные окружения и полная инструкция — в README репозитория.</p>
-  <div class="code-tools">
-    <button class="copy" type="button" id="copy-btn" data-label="Скопировать">Скопировать</button>
-  </div>
-  <div class="codeblock">
-<pre id="code">git clone https://github.com/ssrjkk/tt_bot.git
-cd tt_bot
-pip install -r requirements.txt
-<span class="dim"># токен и путь к базе — в переменных окружения</span>
-export BOT_TOKEN="your_bot_token_here"
-export DB_PATH="coursework_var18.db"
-export WORKERS_COUNT=3
-python -m src.main</pre>
-  </div>
-</section>
+    <ul class="inv-list" id="inv-list">
+      <li data-inv="probe"><span class="inv-mark">[OK]</span><span><b>EndpointProber</b>: HTTP/HTTPS, body 64KB, TLS/SSL expiry и TCP</span></li>
+      <li data-inv="ssrf"><span class="inv-mark">[OK]</span><span><b>_SafeResolver</b>: anti-rebinding SSRF guard (<code>ttl_dns_cache=0</code>)</span></li>
+      <li data-inv="idor"><span class="inv-mark">[OK]</span><span><b>IDOR + Throttle</b>: SQL по <code>user_id</code> и anti-flood 0.4s</span></li>
+      <li data-inv="sched"><span class="inv-mark">[OK]</span><span><b>Scheduler + Retry</b>: авто-опрос, Run All, Retry Failed, порог 1..3</span></li>
+      <li data-inv="csv"><span class="inv-mark">[OK]</span><span><b>CSV Sanitizer</b>: защита от формул <code>= + - @</code> в реестре и логах</span></li>
+    </ul>
+
+    <table class="spec-matrix" aria-label="Сравнение v1.0 и v2.3">
+      <thead><tr><th>Слой</th><th>v1.0 (курсовая)</th><th>v2.3 (продукт)</th></tr></thead>
+      <tbody>
+        <tr><td>Проверки</td><td class="bad-cell">sleep(0.05) + "fail"</td><td class="good-cell">aiohttp + TCP + TLS/SSL</td></tr>
+        <tr><td>Безопасность</td><td class="bad-cell">IDOR, без SSRF/HTML</td><td class="good-cell">_SafeResolver + user_id + CSV</td></tr>
+        <tr><td>UX в боте</td><td class="bad-cell">мёртвые кнопки</td><td class="good-cell">/add, /incidents, SLA, 1..3</td></tr>
+        <tr><td>Инфра / CI</td><td class="bad-cell">root Docker, 24 теста</td><td class="good-cell">read_only + JSON + 95%+</td></tr>
+      </tbody>
+    </table>
+  </section>
 </main>
 
-<footer class="footer">
-  <svg class="footer-clouds" viewBox="0 0 1440 96" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
-    <g fill="#ffffff">
-      <rect x="0" y="-2" width="1440" height="14"/>
-      <circle cx="40" cy="6" r="46"/><circle cx="190" cy="-4" r="62"/><circle cx="360" cy="10" r="40"/>
-      <circle cx="540" cy="0" r="58"/><circle cx="720" cy="12" r="44"/><circle cx="900" cy="-2" r="64"/>
-      <circle cx="1080" cy="8" r="42"/><circle cx="1250" cy="2" r="58"/><circle cx="1420" cy="10" r="46"/>
-    </g>
-    <use href="#botdef" transform="translate(1218,100) rotate(180) scale(.72)"/>
-  </svg>
-  <div class="wrap fcols fgrid-footer">
-    <div class="fbrand">
-      <a class="wordmark" href="./">tt_bot</a>
-      <p>Telegram-бот для университетских лабораторных: сдача работ, отчёты, оценивание.</p>
-      <p class="who">Проект SSRJKK</p>
+<!-- Command Palette -->
+<div class="cmdk-backdrop" id="cmdk-backdrop" role="dialog" aria-modal="true" aria-label="Командная палитра">
+  <div class="cmdk-dialog">
+    <div class="cmdk-head">
+      <input id="cmdk-input" type="text" placeholder="Команда симулятора..." autocomplete="off">
+      <span class="kbd">ESC</span>
     </div>
-    <div class="fcol">
-      <h4>Проект</h4>
-      <a href="https://github.com/ssrjkk/tt_bot">GitHub ↗</a>
-      <a href="https://github.com/ssrjkk/tt_bot#readme">README ↗</a>
-      <a href="https://ssrjkk.github.io/">Все проекты ↗</a>
-    </div>
-    <div class="fcol">
-      <h4>Разделы</h4>
-      <a href="#features">Возможности</a>
-      <a href="#process">Как это работает</a>
-      <a href="#demo">Демо</a>
-      <a href="#start">Запуск</a>
-    </div>
-    <div class="fcol">
-      <h4>Стек</h4>
-      <span>Python 3.11+</span>
-      <span>aiogram 3</span>
-      <span>SQLite</span>
-    </div>
+    <ul class="cmdk-list" id="cmdk-list"></ul>
   </div>
-  <div class="fbottom">
-    <span>© 2026 · Проект SSRJKK</span>
-    <span>Иллюстрации на странице — учебные.</span>
-  </div>
-</footer>
+</div>
+
+<div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 
 <script>
 (function(){
   "use strict";
-  var STATES={queue:"в очереди",checking:"проверяется…",done:"готово"};
-  var rows=Array.prototype.slice.call(document.querySelectorAll(".qrow"));
-  var r2=rows[1],r3=rows[2];
-  var runBtn=document.getElementById("run-btn"),runLabel=document.getElementById("run-label");
-  var log=document.getElementById("qlog");
-  var running=false;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const nowStr = () => new Date().toISOString().slice(0,19).replace("T"," ");
+  const hhmm = () => new Date().toISOString().slice(11,19);
+  const IV_CYCLE = [0, 60, 300, 900];
+  const THR_CYCLE = [1, 2, 3];
+  const nextCycle = (arr, cur, fb) => { const i = arr.indexOf(cur); return i >= 0 ? arr[(i + 1) % arr.length] : fb; };
+  const ivShort = sec => sec <= 0 ? "вручную" : `${sec/60}м`;
+  const barOf = logs => logs.length ? logs.slice(0,10).reverse().map(l => l.status==="completed"?"🟩":"🟥").join("") : "⬜ нет проверок";
+  const sparkOf = logs => {
+    if(!logs.length) return "—";
+    const b = "▁▂▃▄▅▆▇█";
+    const vals = logs.slice(0,10).reverse().map(l => Math.max(0, l.ms));
+    const mx = Math.max(...vals) || 1;
+    return vals.map(v => b[Math.min(7, Math.floor((v / mx) * 7))]).join("");
+  };
+  const meterOf = pct => { const f = Math.max(0, Math.min(10, Math.round(pct / 10))); return "█".repeat(f) + "░".repeat(10 - f); };
 
-  function setState(row,state){
-    if(!row)return;
-    row.dataset.state=state;
-    row.querySelector(".qtxt").textContent=STATES[state];
+  /* Synced theme & ink */
+  const htmlEl = document.documentElement;
+  const themeBtn = document.getElementById("theme-toggle");
+  function applyTheme(mode){
+    htmlEl.setAttribute("data-theme", mode);
+    themeBtn.textContent = mode === "blueprint" ? "📄 Блокнот" : "📐 Чертёж";
+    try{ localStorage.setItem("tt_bot_theme", mode); }catch(_e){}
   }
-  function later(fn,ms){
-    if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches){fn();return;}
-    setTimeout(fn,ms);
+  try{
+    const saved = localStorage.getItem("tt_bot_theme");
+    if(saved === "blueprint" || saved === "paper") applyTheme(saved);
+    const savedInk = localStorage.getItem("tt_bot_ink");
+    if(savedInk) htmlEl.style.setProperty("--pen", savedInk);
+  }catch(_e){}
+  themeBtn.addEventListener("click", () => applyTheme(htmlEl.getAttribute("data-theme")==="blueprint"?"paper":"blueprint"));
+
+  /* Toast */
+  const toastStack = document.getElementById("toast-stack");
+  function showToast(msg, kind){
+    const el = document.createElement("div");
+    el.className = "toast" + (kind ? " " + kind : "");
+    el.textContent = msg;
+    toastStack.appendChild(el);
+    while(toastStack.children.length > 3) toastStack.firstChild.remove();
+    setTimeout(() => el.remove(), 2200);
   }
-  runBtn.addEventListener("click",function(){
-    if(running)return;
-    running=true;runBtn.setAttribute("aria-disabled","true");
-    setState(r2,"queue");setState(r3,"queue");
-    log.textContent="Очередь запущена: 2 работы ждут исполнителя (учебный прогон).";
-    later(function(){
-      setState(r2,"checking");
-      log.textContent="lab-02: исполнитель взял задачу, проверяем доступность сервиса…";
-      later(function(){
-        setState(r2,"done");
-        log.textContent="lab-02: сервис отвечает — работа принята (учебный ответ).";
-        later(function(){
-          setState(r3,"checking");
-          log.textContent="lab-03: исполнитель взял задачу, проверяем доступность сервиса…";
-          later(function(){
-            setState(r3,"done");
-            log.textContent="Готово: 3 из 3 работ проверены (учебный прогон).";
-            runLabel.textContent="Запустить снова";
-            runBtn.removeAttribute("aria-disabled");
-            running=false;
-          },1150);
-        },550);
-      },1150);
-    },450);
+
+  /* 3-tab inspector */
+  const panels = {
+    trace: document.getElementById("panel-trace"),
+    sql: document.getElementById("panel-sql"),
+    json: document.getElementById("panel-json")
+  };
+  function switchInspector(name){
+    document.querySelectorAll(".insp-tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.panel === name)));
+    Object.entries(panels).forEach(([k, el]) => { el.style.display = k === name ? "block" : "none"; });
+    renderSqlTable();
+    renderJsonLogs();
+  }
+  document.querySelectorAll(".insp-tab").forEach(t => t.addEventListener("click", () => switchInspector(t.dataset.panel)));
+
+  let nextId = 4;
+  let tasks = [
+    {id:1, title:"Core Backend API", cat:"backend", ep:"https://api.example.com/health", interval:60, prio:3, thr:2, status:"completed", enabled:true, fails:0, expectedText:"", logs:[
+      {status:"completed", code:200, ssl:84, ms:41.2, details:"HTTP 200 OK", at:nowStr()},
+      {status:"completed", code:200, ssl:84, ms:38.9, details:"HTTP 200 OK", at:nowStr()}
+    ]},
+    {id:2, title:"Ethereum RPC Node", cat:"rpc_node", ep:"tcp://rpc-01.example.net:8545", interval:300, prio:3, thr:2, status:"completed", enabled:true, fails:0, expectedText:"", logs:[
+      {status:"completed", code:"", ssl:null, ms:67.4, details:"TCP OK (rpc-01.example.net:8545)", at:nowStr()}
+    ]},
+    {id:3, title:"Staging Webhook", cat:"devops", ep:"https://stage.example.com/ping", interval:0, prio:2, thr:2, status:"pending", enabled:true, fails:0, expectedText:"", logs:[]}
+  ];
+  let jsonLogs = [];
+  let logFilter = "ALL";
+  let chatHistory = [];
+  let fsm = null;
+  let lastClickTs = 0;
+
+  const feedEl = document.getElementById("tg-feed");
+  const histEl = document.getElementById("tg-history");
+  const msgEl = document.getElementById("tg-msg");
+  const kbEl = document.getElementById("tg-kb");
+  const alertEl = document.getElementById("tg-alert");
+  const subEl = document.getElementById("tg-sub");
+  const formEl = document.getElementById("tg-form");
+  const inputEl = document.getElementById("tg-input");
+  const traceLines = document.getElementById("trace-lines");
+  const traceStep = document.getElementById("trace-step");
+  const modalEl = document.getElementById("tg-modal");
+  const modalTitle = document.getElementById("tg-modal-title");
+  const modalBody = document.getElementById("tg-modal-body");
+
+  document.getElementById("tg-modal-ok").addEventListener("click", () => modalEl.classList.remove("open"));
+  function showTgPopup(title, body){
+    modalTitle.textContent = title;
+    modalBody.textContent = body;
+    modalEl.classList.add("open");
+  }
+
+  function pushJsonLog(level, logger, msg){
+    jsonLogs.unshift(JSON.stringify({ts:new Date().toISOString(), level, logger, msg}));
+    jsonLogs = jsonLogs.slice(0, 12);
+    renderJsonLogs();
+  }
+  function renderJsonLogs(){
+    const filtered = logFilter === "ALL" ? jsonLogs : jsonLogs.filter(l => l.includes(`"level":"${logFilter}"`));
+    document.getElementById("json-count").textContent = `${filtered.length}/${jsonLogs.length} events`;
+    document.getElementById("json-lines").innerHTML = filtered.map(line => `<li>${esc(line)}</li>`).join("") || "<li>(нет записей этого уровня)</li>";
+  }
+  document.querySelectorAll(".lf-chip[data-lvl]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      logFilter = btn.dataset.lvl;
+      document.querySelectorAll(".lf-chip[data-lvl]").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+      renderJsonLogs();
+    });
+  });
+  document.getElementById("copy-json-logs").addEventListener("click", () => {
+    if(navigator.clipboard && jsonLogs.length){
+      navigator.clipboard.writeText(jsonLogs.join("\n"));
+      showToast("JSON-логи скопированы", "ok");
+    }
   });
 
-  /* Копирование команды запуска */
-  var copyBtn=document.getElementById("copy-btn"),code=document.getElementById("code");
-  copyBtn.addEventListener("click",function(){
-    var btn=copyBtn,label=btn.dataset.label||"Скопировать";
-    function done(ok){
-      btn.textContent=ok?"Скопировано":"Выделите код и скопируйте вручную";
-      setTimeout(function(){btn.textContent=label;},2200);
+  function pushUserBubble(text){
+    chatHistory.push(text);
+    if(chatHistory.length > 3) chatHistory.shift();
+    histEl.innerHTML = chatHistory.map(t => `<div class="tg-user-msg">${esc(t)}</div>`).join("");
+  }
+
+  function renderSqlTable(){
+    document.getElementById("sql-count").textContent = `${tasks.length} rows`;
+    document.querySelector("#sql-table tbody").innerHTML = tasks.map(t =>
+      `<tr><td>#${t.id}</td><td>${esc(t.title)}</td><td>${esc(t.status)}</td><td>${t.interval}s</td><td>${t.thr}</td><td>${t.fails}</td></tr>`
+    ).join("");
+  }
+
+  function highlightInv(key){
+    document.querySelectorAll("#inv-list li").forEach(li => li.classList.toggle("hit", li.dataset.inv === key));
+  }
+
+  function trace(label, entries, invKey, logMsg){
+    traceStep.textContent = label;
+    traceLines.innerHTML = entries.map(e => `<li>${e}</li>`).join("");
+    if(invKey) highlightInv(invKey);
+    if(logMsg) pushJsonLog(logMsg.level || "INFO", logMsg.logger || "tt_bot.handlers", logMsg.text);
+    renderSqlTable();
+  }
+
+  function showAlert(htmlText, cls){
+    alertEl.innerHTML = htmlText;
+    alertEl.className = "tg-alert-banner show" + (cls ? " " + cls : "");
+  }
+  function hideAlert(){ alertEl.className = "tg-alert-banner"; }
+
+  function checkThrottle(){
+    const now = performance.now();
+    if(now - lastClickTs < 140){
+      showAlert("⏳ <b>ThrottleMiddleware:</b> слишком частые клики (cooldown 0.4s)", "warn");
+      trace("ThrottleMiddleware", ['<span class="t-warn">middlewares.py → throttled rapid callback (rate_limit=0.4s)</span>'], "idor", {level:"WARNING", logger:"tt_bot.throttle", text:"Rate limit triggered for user_id=42"});
+      return true;
     }
-    function selectCode(){
-      try{
-        var r=document.createRange();r.selectNodeContents(code);
-        var sel=window.getSelection();sel.removeAllRanges();sel.addRange(r);
-      }catch(e){}
+    lastClickTs = now;
+    return false;
+  }
+
+  function renderScreen(htmlMsg, rows, placeholder){
+    msgEl.innerHTML = `${htmlMsg}<span class="tg-ts">${hhmm()}</span>`;
+    kbEl.innerHTML = "";
+    rows.forEach(row => {
+      const div = document.createElement("div");
+      div.className = "tg-row";
+      row.forEach(([label, handler]) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "tg-btn";
+        b.textContent = label;
+        b.addEventListener("click", () => { if(!checkThrottle()) handler(); });
+        div.appendChild(b);
+      });
+      kbEl.appendChild(div);
+    });
+    inputEl.placeholder = placeholder || "/add PayAPI https://pay.example/health 5";
+    feedEl.scrollTop = feedEl.scrollHeight;
+  }
+
+  function computeGlobalStats(){
+    const allLogs = tasks.flatMap(t => t.logs);
+    const okLogs = allLogs.filter(l => l.status === "completed").length;
+    const lats = allLogs.map(l => l.ms).sort((a,b) => a - b);
+    return {
+      total: tasks.length,
+      ok: tasks.filter(t => t.status === "completed").length,
+      fail: tasks.filter(t => t.status === "failed").length,
+      checks: allLogs.length,
+      sla: allLogs.length ? ((okLogs / allLogs.length) * 100).toFixed(1) : "100.0",
+      avg: lats.length ? (lats.reduce((a,b)=>a+b,0)/lats.length).toFixed(1) : "0.0",
+      p95: lats.length ? lats[Math.min(lats.length-1, Math.floor(0.95*(lats.length-1)))].toFixed(1) : "0.0"
+    };
+  }
+
+  function showHome(){
+    fsm = null;
+    const s = computeGlobalStats();
+    renderScreen(
+      `Привет, <b>Engineer</b>!\n\n<b>tt_bot v2.3</b> — self-hosted монитор HTTP/HTTPS, SSL и TCP.\n<code>Мониторов: ${s.total} · UP: ${s.ok} · DOWN: ${s.fail} · SLA 24ч: ${s.sla}%</code>\n\nВыберите действие или отправьте <code>/add Название URL [мин]</code>:`,
+      [
+        [["➕ Добавить монитор", startCreate], ["📋 Мои мониторы", () => showList("all")]],
+        [["📊 Аналитика и SLA", showStats], ["🚨 Инциденты", showIncidents]],
+        [["🔄 Проверить все", runAll], ["📤 Экспорт CSV", exportCsv]]
+      ]
+    );
+    trace("menu:home", [
+      '<span class="t-mod">handlers.py</span> → cmd_start() / cb_home()',
+      '<span class="t-mod">database.py</span> → get_analytics_summary(user_id=42)',
+      '<span class="t-ok">Home live dashboard rendered</span>'
+    ], "idor", {text:"Rendered home dashboard for user_id=42"});
+  }
+
+  function showStatusCmd(){
+    fsm = null;
+    const icons = {pending:"⏳", completed:"✅", failed:"❌"};
+    const lines = tasks.map(t => `${icons[t.status]||"📌"} <b>#${t.id}</b> ${esc(t.title)}${t.enabled?"":" ⏸"} — <code>${t.status.toUpperCase()}</code>`).join("\n");
+    renderScreen(`<b>Статус мониторов (/status):</b>\n\n${lines || "Нет мониторов."}`, [
+      [["📋 Список", () => showList("all")], ["🔄 Проверить все", runAll], ["🏠 Меню", showHome]]
+    ]);
+    trace("cmd:/status", ['<span class="t-mod">handlers.py</span> → cmd_status()'], "idor", {text:"Command /status handled"});
+  }
+
+  function showIncidents(){
+    fsm = null;
+    const incs = tasks.flatMap(t => t.logs.filter(l => l.status==="failed").map(l => ({id:t.id, title:t.title, ...l}))).slice(0,10);
+    const body = incs.length
+      ? "🚨 <b>Последние инциденты:</b>\n\n" + incs.map(i => `❌ <b>#${i.id} ${esc(i.title)}</b>\n   <code>${i.at}</code> · ${i.ms} мс · ${esc(i.details)}`).join("\n")
+      : "🟢 <b>Инцидентов не зафиксировано.</b> Все сервисы работают чисто.";
+    const rows = incs.length
+      ? [[["🔁 Перепроверить упавшие", runFailed], ["❌ Список с ошибкой", () => showList("failed")]], [["📋 Все мониторы", () => showList("all")], ["🏠 Меню", showHome]]]
+      : [[["📋 Все мониторы", () => showList("all")], ["🏠 Меню", showHome]]];
+    renderScreen(body, rows);
+    trace("cmd:/incidents", ['<span class="t-mod">database.py</span> → get_recent_incidents(user_id=42)', `found ${incs.length} failed logs`], "sched", {text:`Fetched ${incs.length} incidents`});
+  }
+
+  function setAllEnabled(state){
+    tasks.forEach(t => { t.enabled = state; });
+    trace(state ? "menu:resume_all" : "menu:pause_all", [
+      `<span class="t-mod">database.py</span> → set_all_tasks_enabled(user_id=42, enabled=${state})`,
+      `<span class="t-ok">updated ${tasks.length} monitors</span>`
+    ], "sched", {text:`Maintenance mode: set enabled=${state} for ${tasks.length} monitors`});
+    showToast(state ? "Мониторинг возобновлён" : "Все мониторы на паузе", state ? "ok" : "");
+    showHome();
+  }
+
+  function handleExpect(rawCmd){
+    pushUserBubble(rawCmd);
+    const parts = rawCmd.trim().split(/\s+/);
+    const tid = parseInt(parts[1], 10);
+    const bodyText = parts.slice(2).join(" ");
+    const t = tasks.find(x => x.id === tid);
+    if(!t || !bodyText){
+      showAlert("Формат: <code>/expect ID строка</code> (или <code>-</code> для сброса)", "warn");
+      return;
     }
-    function legacyCopy(){
-      try{
-        var ta=document.createElement("textarea");ta.value=code.textContent;
-        ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);
-        ta.select();var ok=document.execCommand("copy");document.body.removeChild(ta);
-        if(ok){done(true);return true;}
-      }catch(e){}
-      return false;
+    t.expectedText = bodyText === "-" ? "" : bodyText;
+    trace("cmd:/expect", [`<span class="t-ok">UPDATE tasks SET expected_text=${esc(t.expectedText||"''")} WHERE id=${tid}</span>`], "probe", {text:`Updated expected_text for task #${tid}`});
+    showTask(tid, t.expectedText ? `🔎 Проверка тела: <code>${esc(t.expectedText)}</code>` : "🔎 Проверка тела отключена.");
+  }
+
+  function runAll(){
+    subEl.textContent = "проверяет все эндпоинты…";
+    setTimeout(() => { subEl.textContent = "online · aiogram 3 · SSL + SQLite WAL"; }, 420);
+    const active = tasks.filter(t => t.enabled);
+    active.forEach(t => probeTask(t, false));
+    trace("menu:run_all", ['<span class="t-mod">services.py</span> → run_all_user_tasks(42)', `<span class="t-ok">checked ${active.length} active monitors</span>`], "sched", {text:`Queued all ${active.length} active monitors`});
+    showToast(`Проверено мониторов: ${active.length}`, "ok");
+    showList("all");
+  }
+
+  function runFailed(){
+    const failed = tasks.filter(t => t.enabled && t.status === "failed");
+    if(!failed.length){
+      showTgPopup("tt_bot", "Нет активных упавших мониторов");
+      return;
     }
-    if(legacyCopy())return;
-    if(navigator.clipboard&&navigator.clipboard.writeText){
-      navigator.clipboard.writeText(code.textContent).then(function(){done(true);},function(){selectCode();done(false);});
-    }else{selectCode();done(false);}
+    failed.forEach(t => probeTask(t, false));
+    trace("menu:run_failed", ['<span class="t-mod">services.py</span> → run_failed_user_tasks(42)', `<span class="t-ok">re-checked ${failed.length} failed monitors</span>`], "sched", {text:`Retried ${failed.length} failed monitors`});
+    showToast(`Перепроверено упавших: ${failed.length}`, "ok");
+    showList("all");
+  }
+
+  function quickAdd(rawCmd){
+    pushUserBubble(rawCmd);
+    const parts = rawCmd.trim().split(/\s+/);
+    if(parts.length < 3){
+      showAlert("Формат: <code>/add Название https://api.example/health [мин]</code>", "warn");
+      return;
+    }
+    const title = parts[1].slice(0,80);
+    const ep = parts[2].includes("://") ? parts[2] : `https://${parts[2]}`;
+    const ivMin = parseInt(parts[3] || "0", 10) || 0;
+    const t = {id:nextId++, title, cat:ep.startsWith("tcp://")?"devops":"backend", ep, interval:ivMin*60, prio:2, thr:2, status:"pending", enabled:true, fails:0, expectedText:"", logs:[]};
+    tasks.unshift(t);
+    trace("cmd:/add", ['<span class="t-mod">handlers.py</span> → cmd_quick_add()', `<span class="t-ok">INSERT INTO tasks</span> → #${t.id} ${esc(title)} (${ivMin}m)`], "idor", {text:`Quick-added monitor #${t.id} (${title})`});
+    showTask(t.id, `⚡ Монитор <b>#${t.id}</b> создан через <code>/add</code>!`);
+  }
+
+  function startCreate(){
+    fsm = {step:"title", draft:{}};
+    renderScreen("<b>Шаг 1/5</b> — Введите название монитора (до 80 символов):", [
+      [["⚡ Подставить «Payment API»", () => handleFsmText("Payment API")]],
+      [["✖️ Отмена", showHome]]
+    ], "Введите название...");
+    trace("FSM: waiting_for_title", ['<span class="t-mod">states.py</span> → CreateTaskSG.waiting_for_title']);
+  }
+
+  function handleFsmText(text){
+    const val = text.trim();
+    if(!val) return;
+    pushUserBubble(val);
+    if(fsm.step === "title"){
+      fsm.draft.title = val.slice(0,80); fsm.step = "category";
+      renderScreen(`<b>Шаг 2/5</b> — Название: <b>${esc(fsm.draft.title)}</b>\nВыберите категорию:`, [
+        [["Backend API", () => pickCat("backend")], ["QA AutoTest", () => pickCat("qa_test")]],
+        [["RPC Node", () => pickCat("rpc_node")], ["DevOps / VPS", () => pickCat("devops")]],
+        [["✖️ Отмена", showHome]]
+      ]);
+    } else if(fsm.step === "endpoint"){
+      const ep = val.includes("://") ? val : `https://${val}`;
+      fsm.draft.ep = ep; fsm.step = "interval";
+      renderScreen(`<b>Шаг 4/5</b> — Эндпоинт: <code>${esc(ep)}</code>\nКак часто проверять?`, [
+        [["Только вручную", () => pickInterval(0)], ["Каждую 1 мин", () => pickInterval(60)]],
+        [["Каждые 5 мин", () => pickInterval(300)], ["Каждые 15 мин", () => pickInterval(900)]],
+        [["✖️ Отмена", showHome]]
+      ]);
+    }
+  }
+
+  function pickCat(cat){
+    fsm.draft.cat = cat; fsm.step = "endpoint";
+    renderScreen("<b>Шаг 3/5</b> — Введите эндпоинт (<code>https://...</code> или <code>tcp://host:port</code>):", [
+      [["⚡ https://pay.example.com/health", () => handleFsmText("https://pay.example.com/health")]],
+      [["🛡 Тест SSRF (http://127.0.0.1:8080)", () => handleFsmText("http://127.0.0.1:8080")]],
+      [["✖️ Отмена", showHome]]
+    ], "https://api.example.com/health");
+  }
+
+  function pickInterval(sec){
+    fsm.draft.interval = sec; fsm.step = "priority";
+    renderScreen("<b>Шаг 5/5</b> — Выберите приоритет монитора:", [
+      [["1 — Низкий", () => saveTask(1)], ["2 — Обычный", () => saveTask(2)], ["3 — Критический", () => saveTask(3)]],
+      [["✖️ Отмена", showHome]]
+    ]);
+  }
+
+  function saveTask(prio){
+    const t = {id:nextId++, title:fsm.draft.title, cat:fsm.draft.cat, ep:fsm.draft.ep, interval:fsm.draft.interval, prio, thr:2, status:"pending", enabled:true, fails:0, expectedText:"", logs:[]};
+    tasks.unshift(t); fsm = null;
+    trace("task:created", [`<span class="t-ok">INSERT INTO tasks</span> → #${t.id} (P${prio})`], "idor", {text:`Created monitor #${t.id}`});
+    showTask(t.id);
+  }
+
+  function showList(filter){
+    fsm = null;
+    const filtered = filter === "all" ? tasks : tasks.filter(t => t.status === filter);
+    const icons = {pending:"⏳", completed:"✅", failed:"❌"};
+    const rows = [[
+      [filter==="all"?"• Все •":"Все", () => showList("all")],
+      [filter==="completed"?"• ✅ •":"✅", () => showList("completed")],
+      [filter==="failed"?"• ❌ •":"❌", () => showList("failed")],
+      [filter==="pending"?"• ⏳ •":"⏳", () => showList("pending")]
+    ]];
+    filtered.slice(0,6).forEach(t => {
+      rows.push([[`${icons[t.status]||"📌"}${t.enabled?"":"⏸"} #${t.id} ${t.title} (P${t.prio})`, () => showTask(t.id)]]);
+    });
+    rows.push([["⏸ Пауза всех", () => setAllEnabled(false)], ["▶️ Запустить всех", () => setAllEnabled(true)]]);
+    rows.push([["🔄 Проверить все", runAll], ["🏠 Меню", showHome]]);
+    renderScreen(filtered.length ? `<b>Ваши мониторы</b> (фильтр: ${filter}, всего: ${filtered.length}):` : `Нет мониторов со статусом <b>${filter}</b>.`, rows);
+    trace(`menu:list:${filter}:0`, ['<span class="t-mod">database.py</span> → get_user_tasks(user_id=42, limit=6)'], "idor");
+  }
+
+  function taskCardText(t){
+    const badge = {completed:"🟢 UP", failed:"🔴 DOWN", pending:"🟡 PENDING"}[t.status] || t.status;
+    const iv = t.interval > 0 ? `каждые ${t.interval/60} мин` : "вручную";
+    const st = t.enabled ? "активен" : "пауза ⏸";
+    const last = t.logs.length ? t.logs[0].at : "—";
+    const okCnt = t.logs.filter(l => l.status === "completed").length;
+    const pct = t.logs.length ? (okCnt / t.logs.length) * 100 : 100;
+    const expLine = t.expectedText ? `\n▪️ Тело: содержит <code>${esc(t.expectedText)}</code>` : "";
+    const slaLine = t.logs.length ? `\n▪️ SLA 24ч: <code>${meterOf(pct)}</code> <b>${pct.toFixed(1)}%</b>` : "";
+    const sparkLine = t.logs.length ? `\n▪️ Latency: <code>${sparkOf(t.logs)}</code>` : "";
+    const sslLine = t.logs.length && t.logs[0].ssl !== null ? `\n▪️ TLS/SSL: <code>${t.logs[0].ssl} дн.</code> (мин. 14 дн.)` : "";
+    return `<b>${badge} · Монитор #${t.id}</b> [P${t.prio}]\n▪️ Сервис: <b>${esc(t.title)}</b> (<code>${esc(t.cat)}</code>)\n▪️ Адрес: <code>${esc(t.ep)}</code>\n▪️ Цикл: ${iv} (${st}) · алерт ≥ ${t.thr}${expLine}${slaLine}\n▪️ История: ${barOf(t.logs)}${sparkLine}${sslLine}\n▪️ Проверка: <code>${last}</code>`;
+  }
+
+  function showTask(id, prefix){
+    const t = tasks.find(x => x.id === id);
+    if(!t) return showList("all");
+    const nextP = (t.prio % 3) + 1;
+    const nIv = nextCycle(IV_CYCLE, t.interval, 60);
+    const nThr = nextCycle(THR_CYCLE, t.thr, 2);
+    renderScreen((prefix ? prefix + "\n\n" : "") + taskCardText(t), [
+      [["▶️ Проверить сейчас", () => runTask(t.id)]],
+      [[`🔁 P${t.prio} → P${nextP}`, () => changePrio(t.id, nextP)], [`⏱ ${ivShort(t.interval)} → ${ivShort(nIv)}`, () => changeInterval(t.id, nIv)]],
+      [[`🔔 Порог ${t.thr} → ${nThr}`, () => changeThreshold(t.id, nThr)], [t.enabled ? "⏸ Пауза" : "▶️ Включить", () => toggleTask(t.id)]],
+      [["📜 Логи (10)", () => showLogs(t.id)], ["📥 Логи CSV", () => exportTaskLogsCsv(t.id)]],
+      [["🗑 Удалить", () => askDelete(t.id)], ["◀️ К списку", () => showList("all")]]
+    ]);
+  }
+
+  function probeTask(t, forceFail){
+    const blocked = /(127\.0\.0\.1|localhost|10\.|169\.254|::1)/i.test(t.ep);
+    let ok, details, ms, code, ssl = null;
+    if(blocked){
+      ok = false; ms = 1.1; code = "";
+      details = "Доступ к приватному/локальному адресу запрещён (SSRF guard)";
+    } else if(forceFail || /fail|error/i.test(t.ep)){
+      ok = false; ms = 5000.0; code = 503;
+      details = "Timeout после 5.0 с";
+    } else {
+      ok = true; ms = +(18 + Math.random()*55).toFixed(1);
+      code = t.ep.startsWith("tcp://") ? "" : 200;
+      ssl = t.ep.startsWith("https://") ? 84 : null;
+      details = t.ep.startsWith("tcp://") ? "TCP OK" : "HTTP 200 OK";
+    }
+    const prevFails = t.fails;
+    t.status = ok ? "completed" : "failed";
+    t.fails = ok ? 0 : prevFails + 1;
+    const entry = {status:t.status, code, ssl, ms, details, at:nowStr()};
+    t.logs.unshift(entry); t.logs = t.logs.slice(0,10);
+
+    if(t.fails === t.thr) showAlert(`🔴 <b>Инцидент на мониторе #${t.id}</b> (${esc(t.title)}): <code>${esc(details)}</code>`, "");
+    else if(ok && prevFails >= t.thr) showAlert(`🟢 <b>Восстановлен монитор #${t.id}</b> (${esc(t.title)}): <code>${esc(details)}</code>`, "ok");
+    return {entry, blocked};
+  }
+
+  function runTask(id){
+    const t = tasks.find(x => x.id === id);
+    if(!t) return;
+    const {entry, blocked} = probeTask(t, false);
+    trace(`task:run:${id}`, [
+      '<span class="t-mod">services.py</span> → execute_task_immediately(user_id=42)',
+      blocked ? '<span class="t-warn">probes.py → _SafeResolver BLOCKED private IP</span>' : `<span class="t-mod">probes.py</span> → ${esc(entry.details)} (${entry.ms} мс)`,
+      '<span class="t-mod">database.py</span> → record_check_result() [SQLite WAL]'
+    ], blocked ? "ssrf" : "probe", {level: blocked ? "WARNING" : "INFO", logger:"tt_bot.probes", text:`task=#${id} ${entry.status} ${entry.ms}ms (${entry.details})`});
+    showTask(id, `${entry.status==="completed"?"✅":"❌"} <b>Проверка #${id}:</b> <code>${entry.ms} мс</code> · <code>${esc(entry.details)}</code>`);
+  }
+
+  function changePrio(id, prio){ const t = tasks.find(x=>x.id===id); if(!t) return; t.prio = prio; trace(`task:prio:${id}:${prio}`, [`<span class="t-ok">UPDATE tasks SET priority=${prio} WHERE id=${id} AND user_id=42</span>`], "idor", {text:`Updated task #${id} priority -> P${prio}`}); showTask(id); }
+  function changeInterval(id, iv){ const t = tasks.find(x=>x.id===id); if(!t) return; t.interval = iv; trace(`task:int:${id}:${iv}`, [`<span class="t-ok">UPDATE tasks SET check_interval_sec=${iv} WHERE id=${id} AND user_id=42</span>`], "sched", {text:`Updated task #${id} interval -> ${iv}s`}); showTask(id); }
+  function changeThreshold(id, thr){ const t = tasks.find(x=>x.id===id); if(!t) return; t.thr = thr; trace(`task:thr:${id}:${thr}`, [`<span class="t-ok">UPDATE tasks SET alert_threshold=${thr} WHERE id=${id} AND user_id=42</span>`], "sched", {text:`Updated task #${id} alert_threshold -> ${thr}`}); showToast(`Порог алертов #${id}: ${thr} ош.`, "ok"); showTask(id); }
+  function toggleTask(id){ const t = tasks.find(x=>x.id===id); if(!t) return; t.enabled = !t.enabled; trace(`task:toggle:${id}`, [`enabled = ${t.enabled}`], "sched", {text:`Toggled task #${id} enabled=${t.enabled}`}); showTask(id); }
+
+  function showLogs(id){
+    const t = tasks.find(x => x.id === id);
+    if(!t) return;
+    const body = t.logs.length ? t.logs.map(l => `${l.status==="completed"?"✅":"❌"} <code>${l.at}</code> · ${l.ms} мс · ${esc(l.details)}`).join("\n") : "История проверок пока пуста.";
+    renderScreen(`<b>Последние проверки #${t.id} (${esc(t.title)}):</b>\n\n${body}`, [[["◀️ Назад", () => showTask(t.id)], ["📥 Логи CSV", () => exportTaskLogsCsv(t.id)]]]);
+    trace(`task:logs:${id}`, ['<span class="t-mod">database.py</span> → get_task_logs(limit=10, user_id=42)'], "idor");
+  }
+
+  function exportTaskLogsCsv(id){
+    const t = tasks.find(x => x.id === id);
+    if(!t) return;
+    const sanitize = v => (/^[=+\-@\t\r]/.test(String(v)) ? "'" + v : v);
+    const csv = ["Task_ID;Status;HTTP_Code;SSL_Days;Latency_ms;Details;At", ...t.logs.map(l => [t.id, l.status, l.code, l.ssl??"", l.ms, sanitize(l.details), l.at].join(";"))].join("\n");
+    renderScreen(`📎 <b>tt_bot_task_${t.id}_logs.csv</b> (UTF-8-SIG):\n\n<code>${esc(csv)}</code>`, [[["◀️ К карточке", () => showTask(t.id)], ["🏠 Меню", showHome]]]);
+    trace(`task:logscsv:${id}`, ['<span class="t-mod">services.py</span> → export_task_logs_csv(user_id=42)', '<span class="t-ok">CSV formula prefixes sanitized</span>'], "csv", {text:`Exported logs CSV for task #${id}`});
+  }
+
+  function askDelete(id){
+    const t = tasks.find(x => x.id === id);
+    if(!t) return;
+    renderScreen(`Удалить монитор <b>#${t.id} «${esc(t.title)}»</b> и всю его историю логов?`, [[["✅ Да, удалить", () => confirmDelete(id)], ["↩️ Отмена", () => showTask(id)]]]);
+  }
+  function confirmDelete(id){
+    tasks = tasks.filter(x => x.id !== id);
+    trace(`task:del_confirm:${id}`, [`<span class="t-warn">DELETE FROM tasks WHERE id=${id} AND user_id=42</span>`, '<span class="t-mod">SQLite FK</span> → ON DELETE CASCADE execution_logs'], "idor", {level:"WARNING", text:`Deleted task #${id}`});
+    showToast(`Монитор #${id} удалён`);
+    showList("all");
+  }
+
+  function showStats(){
+    const s = computeGlobalStats();
+    renderScreen(`<b>📊 Аналитика и SLA (24 часа)</b>\n\n▪️ Всего мониторов: <b>${s.total}</b>\n▪️ Работают (UP): <b>${s.ok}</b>\n▪️ С ошибкой (DOWN): <b>${s.fail}</b>\n▪️ Проверок за 24ч: <b>${s.checks}</b>\n▪️ Uptime (SLA 24ч): <code>${meterOf(parseFloat(s.sla))}</code> <b>${s.sla}%</b>\n▪️ Средний latency: <code>${s.avg} мс</code>\n▪️ P95 latency: <code>${s.p95} мс</code>`, [[["🏠 Меню", showHome], ["📋 Мониторы", () => showList("all")]]]);
+    trace("menu:stats", ['<span class="t-mod">database.py</span> → get_analytics_summary(user_id=42)', `<span class="t-ok">SLA 24ч = ${s.sla}% · P95 = ${s.p95} мс</span>`], "probe");
+  }
+
+  function exportCsv(){
+    const sanitize = v => (/^[=+\-@\t\r]/.test(String(v)) ? "'" + v : v);
+    const csv = ["ID;Title;Category;Endpoint;Interval_Sec;Priority;Status;Enabled", ...tasks.map(t => [t.id, sanitize(t.title), t.cat, sanitize(t.ep), t.interval, t.prio, t.status, t.enabled].join(";"))].join("\n");
+    renderScreen(`📎 <b>tt_bot_report_42.csv</b> (UTF-8-SIG):\n\n<code>${esc(csv)}</code>`, [[["🏠 Меню", showHome]]]);
+    trace("menu:export", ['<span class="t-mod">services.py</span> → export_user_tasks_csv()', '<span class="t-ok">CSV formula prefixes sanitized</span>'], "csv", {text:"Exported full CSV report for user_id=42"});
+  }
+
+  function simulateIdor(){
+    showTgPopup("⛔ Доступ запрещён (IDOR Guard)", "Монитор #1 не найден или нет доступа для user_id=9999.");
+    trace("IDOR ATTACK BLOCKED", [
+      '<span class="t-warn">attacker user_id=9999 → callback: task:del_confirm:1</span>',
+      '<span class="t-mod">database.py</span> → DELETE FROM tasks WHERE id=1 AND user_id=9999',
+      '<span class="t-ok">rowcount = 0 · call.answer(show_alert=True)</span>'
+    ], "idor", {level:"WARNING", logger:"tt_bot.security", text:"Blocked cross-user access attempt user_id=9999 -> task_id=1"});
+    showToast("IDOR-атака отражена (0 rows)", "err");
+  }
+
+  formEl.addEventListener("submit", e => {
+    e.preventDefault();
+    const val = inputEl.value.trim();
+    if(!val) return;
+    inputEl.value = "";
+    if(val.startsWith("/add")){ quickAdd(val); return; }
+    if(val.startsWith("/expect")){ handleExpect(val); return; }
+    if(val === "/status"){ pushUserBubble(val); showStatusCmd(); return; }
+    if(val === "/incidents"){ pushUserBubble(val); showIncidents(); return; }
+    if(val === "/stats"){ pushUserBubble(val); showStats(); return; }
+    if(val === "/start"){ pushUserBubble(val); hideAlert(); showHome(); return; }
+    if(fsm){ handleFsmText(val); return; }
+    pushUserBubble(val);
+    if(/^(https?|tcp):\/\//i.test(val)){
+      const ep = val.split(/\s+/)[0];
+      renderScreen(`Похоже на эндпоинт. Чтобы добавить его одной строкой, отправьте:\n<code>/add Service ${esc(ep)} 5</code>`, [
+        [["⚡ Добавить сейчас", () => quickAdd(`/add Service ${ep} 5`)], ["🏠 Меню", showHome]]
+      ]);
+      trace("fallback_message()", ['<span class="t-mod">handlers.py</span> → smart URL hint (zero dead ends)'], "idor");
+      return;
+    }
+    renderScreen("Не понял сообщение. Используйте меню ниже или /help:", [[["🏠 Главное меню", showHome]]]);
   });
+
+  document.getElementById("btn-cmd-start").addEventListener("click", () => { hideAlert(); showHome(); });
+  document.getElementById("btn-cmd-status").addEventListener("click", showStatusCmd);
+  document.getElementById("btn-cmd-inc").addEventListener("click", showIncidents);
+  document.getElementById("btn-cmd-stats").addEventListener("click", showStats);
+  document.getElementById("sim-add").addEventListener("click", () => quickAdd("/add DemoAPI https://demo.example.com/health 5"));
+  document.getElementById("sim-tick").addEventListener("click", () => {
+    const due = tasks.filter(t => t.enabled && t.interval > 0);
+    due.forEach(t => probeTask(t, false));
+    trace("MonitorScheduler.run_once()", ['<span class="t-mod">database.py</span> → get_due_tasks()', `<span class="t-ok">enqueued ${due.length} monitors</span>`], "sched", {logger:"tt_bot.scheduler", text:`Scheduler tick enqueued ${due.length} due tasks`});
+    showList("all");
+  });
+  document.getElementById("sim-ssrf").addEventListener("click", () => {
+    const t = {id:nextId++, title:"Local Admin Probe", cat:"devops", ep:"http://127.0.0.1:8080/admin", interval:0, prio:3, thr:2, status:"pending", enabled:true, fails:0, expectedText:"", logs:[]};
+    tasks.unshift(t); runTask(t.id);
+  });
+  document.getElementById("sim-idor").addEventListener("click", simulateIdor);
+  document.getElementById("sim-incident").addEventListener("click", () => {
+    const rpc = tasks.find(t => t.cat === "rpc_node") || tasks[0];
+    if(!rpc) return;
+    probeTask(rpc, true); probeTask(rpc, true);
+    trace("AlertCallback: INCIDENT", ['<span class="t-warn">consecutive_failures = threshold</span>', '<span class="t-ok">Telegram push delivered</span>'], "sched", {level:"ERROR", logger:"tt_bot.alerts", text:`Incident triggered for task #${rpc.id}`});
+    showTask(rpc.id);
+  });
+
+  /* Command Palette (⌘K) */
+  const backdrop = document.getElementById("cmdk-backdrop");
+  const cmdkInput = document.getElementById("cmdk-input");
+  const cmdkList = document.getElementById("cmdk-list");
+  let cmdkIdx = 0;
+  const COMMANDS = [
+    {label:"Добавить монитор через /add DemoAPI", hint:"/add", run:() => quickAdd("/add DemoAPI https://demo.example.com/health 5")},
+    {label:"Смоделировать IDOR-атаку (user_id=9999)", hint:"IDOR", run:simulateIdor},
+    {label:"Смоделировать SSRF-атаку (127.0.0.1)", hint:"SSRF", run:() => document.getElementById("sim-ssrf").click()},
+    {label:"Открыть вкладку SQLite WAL Inspector", hint:"SQL", run:() => switchInspector("sql")},
+    {label:"Открыть вкладку JSON Logs", hint:"JSON", run:() => switchInspector("json")},
+    {label:"Переключить: Блокнот ↔ Чертёж", hint:"T", run:() => applyTheme(htmlEl.getAttribute("data-theme")==="blueprint"?"paper":"blueprint")},
+    {label:"Вернуться на главную страницу", hint:"../", run:() => { window.location.href = "../"; }}
+  ];
+  function renderCmdk(){
+    const q = cmdkInput.value.trim().toLowerCase();
+    const flt = COMMANDS.filter(c => !q || c.label.toLowerCase().includes(q) || c.hint.toLowerCase().includes(q));
+    if(cmdkIdx >= flt.length) cmdkIdx = 0;
+    cmdkList.innerHTML = flt.map((c,i) => `<li><button class="cmdk-item${i===cmdkIdx?' active':''}" type="button" data-i="${i}"><span>${esc(c.label)}</span><span class="kbd">${esc(c.hint)}</span></button></li>`).join("");
+    cmdkList.querySelectorAll(".cmdk-item").forEach(b => b.addEventListener("click", () => { const it = flt[Number(b.dataset.i)]; backdrop.classList.remove("open"); if(it) it.run(); }));
+    return flt;
+  }
+  function openCmdk(){ backdrop.classList.add("open"); cmdkInput.value = ""; cmdkIdx = 0; renderCmdk(); cmdkInput.focus(); }
+  document.getElementById("cmdk-open").addEventListener("click", openCmdk);
+  backdrop.addEventListener("click", e => { if(e.target === backdrop) backdrop.classList.remove("open"); });
+  cmdkInput.addEventListener("input", () => { cmdkIdx = 0; renderCmdk(); });
+  cmdkInput.addEventListener("keydown", e => {
+    const flt = renderCmdk();
+    if(e.key === "ArrowDown"){ e.preventDefault(); cmdkIdx = (cmdkIdx + 1) % Math.max(1, flt.length); renderCmdk(); }
+    else if(e.key === "ArrowUp"){ e.preventDefault(); cmdkIdx = (cmdkIdx - 1 + Math.max(1, flt.length)) % Math.max(1, flt.length); renderCmdk(); }
+    else if(e.key === "Enter" && flt[cmdkIdx]){ e.preventDefault(); const fn = flt[cmdkIdx].run; backdrop.classList.remove("open"); fn(); }
+    else if(e.key === "Escape") backdrop.classList.remove("open");
+  });
+  document.addEventListener("keydown", e => {
+    if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k"){ e.preventDefault(); backdrop.classList.contains("open") ? backdrop.classList.remove("open") : openCmdk(); }
+    else if(e.key === "Escape"){ backdrop.classList.remove("open"); modalEl.classList.remove("open"); }
+  });
+
+  showHome();
 })();
 </script>
 </body>
