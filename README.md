@@ -67,3 +67,7 @@ make audit
 ---
 
 **SSRJKK** — [GitHub](https://github.com/ssrjkk/tt_bot) · [Landing](https://ssrjkk.github.io/tt_bot/) · [Showcase](https://ssrjkk.github.io/tt_bot/showcase/)
+
+## Documentation
+
+- [Architecture](ARCHITECTURE.md)
