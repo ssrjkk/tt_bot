@@ -9,6 +9,20 @@
 
 ---
 
+**Сайт:** https://ssrjkk.github.io/tt_bot/
+
+## Скриншоты
+
+Сняты с опубликованного сайта в настоящем браузере (Chrome, 1440×900 и 390×844).
+
+| Главная | Разделы |
+| --- | --- |
+| <img src="docs/screenshots/home.jpg" width="420" alt="tt_bot — главная страница"> | <img src="docs/screenshots/content.jpg" width="420" alt="tt_bot — разделы сайта"> |
+
+<p align="center"><img src="docs/screenshots/showcase.jpg" width="420" alt="tt_bot — интерактивная витрина"></p>
+
+<p align="center"><img src="docs/screenshots/mobile.jpg" width="320" alt="tt_bot — мобильная версия"></p>
+
 ## Возможности (v2.3)
 
 - **Реальные HTTP/HTTPS, SSL и TCP-пробы (`src/probes.py`)**: проверка HTTP-кода, подстроки в теле (`expected_text`, до 64 КБ), срока действия TLS-сертификата (`ssl_min_days`) и TCP-портов.
