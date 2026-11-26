@@ -7,7 +7,6 @@ and TCP services, with schedules, alerts, per-monitor SLA history and CSV export
 The full Russian documentation is in [README.ru.md](README.ru.md).
 
 **Site:** https://ssrjkk.github.io/tt_bot/  
-**Showcase:** https://ssrjkk.github.io/tt_bot/showcase/  
 **Source:** https://github.com/ssrjkk/tt_bot
 
 ## Screenshot

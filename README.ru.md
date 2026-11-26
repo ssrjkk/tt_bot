@@ -5,9 +5,8 @@
 Лёгкий self-hosted Telegram-бот для мониторинга HTTP/HTTPS, SSL-сертификатов и TCP-сервисов прямо из чата.
 Один Docker-контейнер, SQLite WAL, anti-rebinding SSRF guard, расписание, умные алерты, быстрые команды (`/add`, `/incidents`, `/status`, `/stats`), визуальная история ``, SLA/P95 по каждому монитору и экспорт в CSV.
 
-**Сайт-блокнот и интерактивная витрина ( Блокнот /  Чертёж + палитра `⌘K`):**
+**Сайт-блокнот (Блокнот / Чертёж + палитра `⌘K`):**
 - Лендинг: https://ssrjkk.github.io/tt_bot/
-- Интерактивная витрина (чат-симулятор + Trace / SQLite WAL / JSON Logs): https://ssrjkk.github.io/tt_bot/showcase/
 
 ---
 
@@ -20,8 +19,6 @@
 | Главная | Разделы |
 | --- | --- |
 | <img src="docs/screenshots/home.jpg" width="420" alt="tt_bot — главная страница"> | <img src="docs/screenshots/content.jpg" width="420" alt="tt_bot — разделы сайта"> |
-
-<p align="center"><img src="docs/screenshots/showcase.jpg" width="420" alt="tt_bot — интерактивная витрина"></p>
 
 <p align="center"><img src="docs/screenshots/mobile.jpg" width="320" alt="tt_bot — мобильная версия"></p>
 
@@ -68,7 +65,7 @@ make audit
 
 ---
 
-**SSRJKK** — [GitHub](https://github.com/ssrjkk/tt_bot) · [Landing](https://ssrjkk.github.io/tt_bot/) · [Showcase](https://ssrjkk.github.io/tt_bot/showcase/)
+**SSRJKK** — [GitHub](https://github.com/ssrjkk/tt_bot) · [Landing](https://ssrjkk.github.io/tt_bot/)
 
 ## Documentation
 
