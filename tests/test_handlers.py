@@ -276,10 +276,10 @@ async def test_task_actions_uptime_bar_and_idor(db_repo, worker_pool, report_ser
     call_run = _make_call(3004, f"task:run:{tid}")
     await cb_task_run(call_run, worker_pool, db_repo)
     rendered = call_run.message.edit_text.call_args[0][0]
-    assert "✅" in rendered and "🟢 UP" in rendered
-    # A completed run renders as the ✅ result line + STATUS_BADGES["completed"],
+    assert "✓ UP" in rendered and rendered.count("✓") >= 2
+    # A completed run renders as the ✓ result line + STATUS_BADGES["completed"],
     # the word "COMPLETED" is never part of the card text.
-    assert "🟩" in rendered
+    assert "█" in rendered
     assert "84 дн." in rendered
 
     await cb_task_view(_make_call(3004, f"task:view:{tid}"), db_repo)
@@ -490,8 +490,8 @@ async def test_task_run_announces_unsaved_result(db_repo, worker_pool, monkeypat
 
     rendered = call.message.edit_text.call_args[0][0]
     assert "не сохранён" in rendered
-    assert "✅" not in rendered
-    assert "❌" not in rendered
+    assert "✓" not in rendered
+    assert "✗" not in rendered
 
 
 def _tree_task(user_id: int, title: str, endpoint: str) -> TaskDTO:
