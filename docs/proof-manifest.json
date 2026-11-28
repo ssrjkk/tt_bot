@@ -11,19 +11,19 @@
       "file": "docs/screenshots/home.jpg",
       "source": "docs/index.html",
       "render": "playwright chromium viewport 1440x900 scale 1 jpeg quality 85",
-      "source_blob": "a9ea1155c5e11cdfacf92b6d30360c831f4c9680"
+      "source_blob": "aaafd28e12619092d83fc3a3abb187d545b6cc9a"
     },
     {
       "file": "docs/screenshots/content.jpg",
       "source": "docs/index.html",
       "render": "playwright chromium viewport 1440x900 scale 1 jpeg quality 85, scroll to #checklist minus 330px",
-      "source_blob": "a9ea1155c5e11cdfacf92b6d30360c831f4c9680"
+      "source_blob": "aaafd28e12619092d83fc3a3abb187d545b6cc9a"
     },
     {
       "file": "docs/screenshots/mobile.jpg",
       "source": "docs/index.html",
       "render": "playwright chromium viewport 390x844 scale 2 jpeg quality 85",
-      "source_blob": "a9ea1155c5e11cdfacf92b6d30360c831f4c9680"
+      "source_blob": "aaafd28e12619092d83fc3a3abb187d545b6cc9a"
     }
   ]
 }
