@@ -268,3 +268,114 @@ async def test_csv_formula_injection_sanitization(db_repo, report_service):
     )
     csv_text = await report_service.export_user_tasks_csv(2005)
     assert "'=HYPERLINK" in csv_text
+
+
+def _tree_task(user_id: int, title: str, endpoint: str) -> TaskDTO:
+    return TaskDTO(
+        id=None,
+        user_id=user_id,
+        title=title,
+        category="backend",
+        target_endpoint=endpoint,
+        alert_threshold=2,
+    )
+
+
+def test_alert_event_fires_only_on_threshold_edges():
+    task = TaskDTO(
+        id=None,
+        user_id=1,
+        title="t",
+        category="backend",
+        target_endpoint="https://t.example",
+        alert_threshold=2,
+    )
+    assert AsyncWorkerPool._alert_event(task, 0, 1) is None
+    assert AsyncWorkerPool._alert_event(task, 1, 2) is False
+    assert AsyncWorkerPool._alert_event(task, 2, 3) is None
+    assert AsyncWorkerPool._alert_event(task, 3, 0) is True
+    assert AsyncWorkerPool._alert_event(task, 1, 0) is None
+
+
+@pytest.mark.asyncio
+async def test_dependency_tree_keeps_one_alert_per_root_cause(db_repo):
+    state = {"proxy": False, "api": False}
+    events = []
+
+    async def probe(endpoint: str) -> ProbeResult:
+        key = "proxy" if "proxy" in endpoint else "api"
+        ok = state[key]
+        return ProbeResult(
+            ok=ok,
+            details="HTTP 200 OK" if ok else "HTTP 503 Unavailable",
+            status_code=200 if ok else 503,
+        )
+
+    async def on_alert(task, log_dto, recovered: bool) -> None:
+        events.append((task.id, recovered, log_dto.suppressed))
+
+    await db_repo.upsert_user(UserDTO(id=2010, username="tree", full_name="Tree"))
+    proxy = await db_repo.create_task(
+        _tree_task(2010, "Edge proxy", "https://proxy.example")
+    )
+    api = await db_repo.create_task(_tree_task(2010, "Pay API", "https://api.example"))
+    assert await db_repo.set_task_parent(api, proxy, user_id=2010) is True
+
+    pool = AsyncWorkerPool(
+        repo=db_repo, workers_count=1, probe_func=probe, alert_callback=on_alert
+    )
+    for _ in range(2):
+        await pool.execute_task_immediately(proxy)
+    assert events == [(proxy, False, False)]
+
+    for _ in range(2):
+        await pool.execute_task_immediately(api)
+    assert events == [(proxy, False, False)]
+
+    symptom_log = (await db_repo.get_task_logs(api))[0]
+    assert symptom_log.suppressed is True
+    assert symptom_log.root_task_id == proxy
+    assert (await db_repo.get_analytics_summary(2010))["suppressed_24h"] == 1
+
+    # Ребёнок починился, причина ещё лежит — «восстановлено» не шлём.
+    state["api"] = True
+    await pool.execute_task_immediately(api)
+    assert events == [(proxy, False, False)]
+    assert (await db_repo.get_task_by_id(api)).status == "completed"
+
+    state["proxy"] = True
+    await pool.execute_task_immediately(proxy)
+    assert [(tid, rec) for tid, rec, _ in events] == [
+        (proxy, False),
+        (proxy, True),
+    ]
+
+    # Ниже здоровой причины падение снова объявляется как отдельный инцидент.
+    state["api"] = False
+    for _ in range(2):
+        await pool.execute_task_immediately(api)
+    assert len(events) == 3
+    assert events[2] == (api, False, False)
+
+
+@pytest.mark.asyncio
+async def test_symptom_without_parent_still_alerts(db_repo):
+    events = []
+
+    async def failing_probe(_ep: str) -> ProbeResult:
+        return ProbeResult(ok=False, details="HTTP 500", status_code=500)
+
+    async def on_alert(task, log_dto, recovered: bool) -> None:
+        events.append((task.id, recovered, log_dto.suppressed))
+
+    await db_repo.upsert_user(UserDTO(id=2011, username="solo", full_name="Solo"))
+    solo = await db_repo.create_task(
+        _tree_task(2011, "Solo API", "https://fail.example")
+    )
+    pool = AsyncWorkerPool(
+        repo=db_repo, workers_count=1, probe_func=failing_probe, alert_callback=on_alert
+    )
+    for _ in range(2):
+        await pool.execute_task_immediately(solo)
+    assert events == [(solo, False, False)]
+    assert (await db_repo.get_analytics_summary(2011))["suppressed_24h"] == 0

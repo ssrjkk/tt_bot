@@ -27,6 +27,7 @@ class TaskDTO:
     enabled: bool = True
     consecutive_failures: int = 0
     alert_threshold: int = 2
+    parent_id: Optional[int] = None
     last_checked_at: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -41,6 +42,8 @@ class ExecutionLogDTO:
     details: str
     status_code: Optional[int] = None
     ssl_days_left: Optional[int] = None
+    suppressed: bool = False
+    root_task_id: Optional[int] = None
     executed_at: Optional[str] = None
 
 
