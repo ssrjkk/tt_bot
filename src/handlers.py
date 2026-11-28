@@ -31,10 +31,10 @@ PAGE_SIZE = 6
 ALLOWED_FILTERS = {"all", "completed", "failed", "pending"}
 
 STATUS_BADGES = {
-    "completed": "🟢 UP",
-    "failed": "🔴 DOWN",
-    "pending": "🟡 PENDING",
-    "running": "🔄 RUNNING",
+    "completed": "✓ UP",
+    "failed": "✗ DOWN",
+    "pending": "· PENDING",
+    "running": "… RUNNING",
 }
 
 TREE_MARKS = {"completed": "✓", "failed": "✗", "pending": "—", "running": "→"}
@@ -81,10 +81,10 @@ def _format_interval(sec: int) -> str:
 
 def _build_uptime_bar(logs: List[ExecutionLogDTO]) -> str:
     if not logs:
-        return "⬜ нет проверок"
+        return "□ нет проверок"
     ordered = list(reversed(logs[:10]))
     return "".join(
-        "🟩" if entry.result_status == "completed" else "🟥" for entry in ordered
+        "█" if entry.result_status == "completed" else "░" for entry in ordered
     )
 
 
@@ -124,12 +124,12 @@ def _append_log_lines(
 ) -> None:
     if logs is None:
         return
-    lines.append(f"▪️ История: {_build_uptime_bar(logs)}")
+    lines.append(f"· История: {_build_uptime_bar(logs)}")
     if logs:
-        lines.append(f"▪️ Latency: <code>{_build_latency_sparkline(logs)}</code>")
+        lines.append(f"· Latency: <code>{_build_latency_sparkline(logs)}</code>")
         if logs[0].ssl_days_left is not None:
             lines.append(
-                f"▪️ TLS/SSL: <code>{logs[0].ssl_days_left} дн.</code> "
+                f"· TLS/SSL: <code>{logs[0].ssl_days_left} дн.</code> "
                 f"(мин. {task.ssl_min_days} дн.)"
             )
 
@@ -140,52 +140,50 @@ def _render_task_card(
     task_stats: Optional[Dict[str, Any]] = None,
 ) -> str:
     badge = STATUS_BADGES.get(task.status, task.status.upper())
-    state_label = "активен" if task.enabled else "пауза ⏸"
+    state_label = "активен" if task.enabled else "пауза ‖"
     lines = [
         f"<b>{badge} · Монитор #{task.id}</b> [P{task.priority}]",
-        f"▪️ Сервис: <b>{html.escape(task.title)}</b> "
+        f"· Сервис: <b>{html.escape(task.title)}</b> "
         f"(<code>{html.escape(task.category)}</code>)",
-        f"▪️ Адрес: <code>{html.escape(task.target_endpoint)}</code>",
-        f"▪️ Цикл: {_format_interval(task.check_interval_sec)} ({state_label}) · "
+        f"· Адрес: <code>{html.escape(task.target_endpoint)}</code>",
+        f"· Цикл: {_format_interval(task.check_interval_sec)} ({state_label}) · "
         f"алерт ≥ {task.alert_threshold}",
     ]
     if task.parent_id:
         lines.append(
-            f"▪️ Зависит от: <b>#{task.parent_id}</b> · "
+            f"· Зависит от: <b>#{task.parent_id}</b> · "
             f"<code>/link {task.id} -</code> сбрасывает"
         )
     if task.expected_text:
-        lines.append(
-            f"▪️ Тело: содержит <code>{html.escape(task.expected_text)}</code>"
-        )
+        lines.append(f"· Тело: содержит <code>{html.escape(task.expected_text)}</code>")
     if task_stats and task_stats["checks_24h"] > 0:
         meter = _build_sla_meter(task_stats["uptime_24h_pct"])
         lines.append(
-            f"▪️ SLA 24ч: <code>{meter}</code> "
+            f"· SLA 24ч: <code>{meter}</code> "
             f"<b>{task_stats['uptime_24h_pct']}%</b> · "
             f"P95 <code>{task_stats['p95_latency_ms']} мс</code>"
         )
     _append_log_lines(lines, task, logs)
     ts = (task.last_checked_at or "—")[:19].replace("T", " ")
-    lines.append(f"▪️ Проверка: <code>{html.escape(ts)}</code>")
+    lines.append(f"· Проверка: <code>{html.escape(ts)}</code>")
     return "\n".join(lines)
 
 
 def _render_stats_text(stats: dict) -> str:
     return (
-        "<b>📊 Аналитика и SLA (24 часа)</b>\n\n"
-        f"▪️ Всего мониторов: <b>{stats['total']}</b>\n"
-        f"▪️ Работают (UP): <b>{stats['completed']}</b>\n"
-        f"▪️ С ошибкой (DOWN): <b>{stats['failed']}</b>\n"
-        f"▪️ В ожидании (Pending): <b>{stats['pending']}</b>\n"
-        f"▪️ Проверок за 24ч: <b>{stats['checks_24h']}</b>\n"
-        f"▪️ Алертов подавлено (24ч): "
+        "<b>Аналитика и SLA (24 часа)</b>\n\n"
+        f"· Всего мониторов: <b>{stats['total']}</b>\n"
+        f"· Работают (UP): <b>{stats['completed']}</b>\n"
+        f"· С ошибкой (DOWN): <b>{stats['failed']}</b>\n"
+        f"· В ожидании (Pending): <b>{stats['pending']}</b>\n"
+        f"· Проверок за 24ч: <b>{stats['checks_24h']}</b>\n"
+        f"· Алертов подавлено (24ч): "
         f"<b>{stats['suppressed_24h']}</b> · <code>/tree</code>\n"
-        f"▪️ Uptime (SLA 24ч): "
+        f"· Uptime (SLA 24ч): "
         f"<code>{_build_sla_meter(stats['uptime_24h_pct'])}</code> "
         f"<b>{stats['uptime_24h_pct']}%</b>\n"
-        f"▪️ Средний latency: <code>{stats['avg_latency_ms']} мс</code>\n"
-        f"▪️ P95 latency: <code>{stats['p95_latency_ms']} мс</code>"
+        f"· Средний latency: <code>{stats['avg_latency_ms']} мс</code>\n"
+        f"· P95 latency: <code>{stats['p95_latency_ms']} мс</code>"
     )
 
 
@@ -200,12 +198,12 @@ def _incident_reason_tag(item: dict) -> str:
 
 def _render_incidents_text(incidents: List[dict]) -> str:
     if not incidents:
-        return "🟢 <b>Инцидентов не зафиксировано.</b> Все сервисы работают чисто."
-    lines = ["🚨 <b>Последние инциденты (до 10):</b>\n"]
+        return "✓ <b>Инцидентов не зафиксировано.</b> Все сервисы работают чисто."
+    lines = ["✗ <b>Последние инциденты (до 10):</b>\n"]
     for item in incidents:
         ts = (item["executed_at"] or "")[:19].replace("T", " ")
         lines.append(
-            f"❌ <b>#{item['task_id']} {html.escape(item['title'])}</b>\n"
+            f"✗ <b>#{item['task_id']} {html.escape(item['title'])}</b>\n"
             f"   <code>{ts}</code> · {item['latency_ms']} мс · "
             f"{html.escape(str(item['details'])[:60])}" + _incident_reason_tag(item)
         )
@@ -424,7 +422,7 @@ async def cmd_quick_add(message: Message, repo: DatabaseRepository) -> None:
     )
     task.id = await repo.create_task(task)
     await message.answer(
-        f"⚡ Монитор <b>#{task.id}</b> создан!\n\n" + _render_task_card(task, []),
+        f"✓ Монитор <b>#{task.id}</b> создан!\n\n" + _render_task_card(task, []),
         reply_markup=task_actions_kb(task),
         parse_mode="HTML",
     )
@@ -450,9 +448,9 @@ async def cmd_expect(message: Message, repo: DatabaseRepository) -> None:
         return
     task, logs, stats = await _load_card_view(repo, task_id, message.from_user.id)
     msg_prefix = (
-        f"🔎 Проверка тела обновлена: <code>{html.escape(expected)}</code>"
+        f"✓ Проверка тела обновлена: <code>{html.escape(expected)}</code>"
         if expected
-        else "🔎 Проверка тела ответа отключена."
+        else "✗ Проверка тела ответа отключена."
     )
     await message.answer(
         f"{msg_prefix}\n\n" + _render_task_card(task, logs, stats),
@@ -529,8 +527,8 @@ async def cmd_status(message: Message, repo: DatabaseRepository) -> None:
         return
     lines = ["<b>Статус мониторов:</b>\n"]
     for task in tasks:
-        icon = STATUS_ICONS.get(task.status, "📌")
-        pause = " ⏸" if not task.enabled else ""
+        icon = STATUS_ICONS.get(task.status, "·")
+        pause = " ‖" if not task.enabled else ""
         lines.append(
             f"{icon} <b>#{task.id}</b> {html.escape(task.title)}{pause} "
             f"— <code>{html.escape(task.status.upper())}</code>"
@@ -626,7 +624,7 @@ async def cb_run_all(call: CallbackQuery, worker_pool: AsyncWorkerPool) -> None:
         return
     await _safe_edit(
         call,
-        f"🔄 Поставлено в очередь <b>AsyncWorkerPool</b>: <b>{queued}</b> монитор(ов).\n"
+        f"↻ Поставлено в очередь <b>AsyncWorkerPool</b>: <b>{queued}</b> монитор(ов).\n"
         "Результаты появятся в списке через пару секунд.",
         main_menu_kb(),
     )
@@ -641,7 +639,7 @@ async def cb_run_failed(call: CallbackQuery, worker_pool: AsyncWorkerPool) -> No
         return
     await _safe_edit(
         call,
-        f"🔁 Перепроверка упавших мониторов: поставлено в очередь <b>{queued}</b>.",
+        f"↻ Перепроверка упавших мониторов: поставлено в очередь <b>{queued}</b>.",
         main_menu_kb(),
     )
     await call.answer(f"Перезапущено: {queued}")
@@ -656,7 +654,7 @@ async def cb_pause_all(call: CallbackQuery, repo: DatabaseRepository) -> None:
     stats = await repo.get_analytics_summary(call.from_user.id)
     await _safe_edit(
         call,
-        f"⏸ <b>Режим обслуживания:</b> поставлено на паузу <b>{count}</b> монитор(ов)."
+        f"‖ <b>Режим обслуживания:</b> поставлено на паузу <b>{count}</b> монитор(ов)."
         "\n\n" + _render_home_text(stats),
         main_menu_kb(),
     )
@@ -672,7 +670,7 @@ async def cb_resume_all(call: CallbackQuery, repo: DatabaseRepository) -> None:
     stats = await repo.get_analytics_summary(call.from_user.id)
     await _safe_edit(
         call,
-        f"▶️ <b>Мониторинг возобновлён:</b> активно <b>{count}</b> монитор(ов)."
+        f"▸ <b>Мониторинг возобновлён:</b> активно <b>{count}</b> монитор(ов)."
         "\n\n" + _render_home_text(stats),
         main_menu_kb(),
     )
@@ -772,7 +770,7 @@ async def fsm_process_priority_cb(
     task_id, task = await _save_new_task(call.from_user.id, prio, state, repo)
     await _safe_edit(
         call,
-        f"✅ Монитор <b>#{task_id}</b> создан!\n\n" + _render_task_card(task, []),
+        f"✓ Монитор <b>#{task_id}</b> создан!\n\n" + _render_task_card(task, []),
         task_actions_kb(task),
     )
     await call.answer("Сохранено!")
@@ -791,7 +789,7 @@ async def fsm_process_priority_msg(
     prio = int(message.text.strip())
     task_id, task = await _save_new_task(message.from_user.id, prio, state, repo)
     await message.answer(
-        f"✅ Монитор <b>#{task_id}</b> создан!\n\n" + _render_task_card(task, []),
+        f"✓ Монитор <b>#{task_id}</b> создан!\n\n" + _render_task_card(task, []),
         reply_markup=task_actions_kb(task),
         parse_mode="HTML",
     )
@@ -874,7 +872,7 @@ async def cb_task_run(
             task_actions_kb(updated_task),
         )
         return
-    icon = "✅" if log_entry.result_status == "completed" else "❌"
+    icon = "✓" if log_entry.result_status == "completed" else "✗"
     result_text = (
         f"{icon} <b>Проверка #{task_id}:</b> "
         f"<code>{log_entry.latency_ms} мс</code> · "
@@ -969,7 +967,7 @@ async def cb_task_logs(call: CallbackQuery, repo: DatabaseRepository) -> None:
     else:
         lines = []
         for entry in logs:
-            icon = "✅" if entry.result_status == "completed" else "❌"
+            icon = "✓" if entry.result_status == "completed" else "✗"
             ts = (entry.executed_at or "")[:19].replace("T", " ")
             lines.append(
                 f"{icon} <code>{ts}</code> · {entry.latency_ms} мс · "
@@ -1040,7 +1038,7 @@ async def cb_task_delete_confirm(call: CallbackQuery, repo: DatabaseRepository) 
     total_pages = max(1, math.ceil(total / PAGE_SIZE))
     await _safe_edit(
         call,
-        f"🗑 Монитор #{task_id} удалён.",
+        f"✗ Монитор #{task_id} удалён.",
         tasks_list_kb(tasks, 0, total_pages, "all"),
     )
     await call.answer("Удалено")

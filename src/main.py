@@ -51,15 +51,15 @@ def build_alert_sender(bot: Bot):
         task: TaskDTO, log_dto: ExecutionLogDTO, recovered: bool
     ) -> None:
         if recovered:
-            header = f"🟢 <b>Восстановлен монитор #{task.id}</b>"
+            header = f"✓ <b>Восстановлен монитор #{task.id}</b>"
         else:
-            header = f"🔴 <b>Инцидент на мониторе #{task.id}</b>"
+            header = f"✗ <b>Инцидент на мониторе #{task.id}</b>"
         text = (
             f"{header}\n"
-            f"▪️ Сервис: {html.escape(task.title)}\n"
-            f"▪️ Эндпоинт: <code>{html.escape(task.target_endpoint)}</code>\n"
-            f"▪️ Ответ: <code>{html.escape(log_dto.details)}</code>\n"
-            f"▪️ Latency: <code>{log_dto.latency_ms} мс</code>"
+            f"· Сервис: {html.escape(task.title)}\n"
+            f"· Эндпоинт: <code>{html.escape(task.target_endpoint)}</code>\n"
+            f"· Ответ: <code>{html.escape(log_dto.details)}</code>\n"
+            f"· Latency: <code>{log_dto.latency_ms} мс</code>"
         )
         await bot.send_message(task.user_id, text, parse_mode="HTML")
 

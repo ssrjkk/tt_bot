@@ -5,10 +5,10 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from src.models import TaskDTO
 
 STATUS_ICONS = {
-    "pending": "⏳",
-    "running": "🔄",
-    "completed": "✅",
-    "failed": "❌",
+    "pending": "·",
+    "running": "…",
+    "completed": "✓",
+    "failed": "✗",
 }
 
 INTERVAL_CYCLE = (0, 60, 300, 900)
@@ -42,21 +42,21 @@ def main_menu_kb() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="➕ Добавить монитор",
+                    text="+ Добавить монитор",
                     callback_data="menu:create",
                 ),
                 InlineKeyboardButton(
-                    text="📋 Мои мониторы",
+                    text="Мои мониторы",
                     callback_data="menu:list:all:0",
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="📊 Аналитика и SLA",
+                    text="Аналитика и SLA",
                     callback_data="menu:stats",
                 ),
                 InlineKeyboardButton(
-                    text="🚨 Инциденты",
+                    text="Инциденты",
                     callback_data="menu:incidents",
                 ),
             ],
@@ -66,13 +66,13 @@ def main_menu_kb() -> InlineKeyboardMarkup:
                     callback_data="menu:tree",
                 ),
                 InlineKeyboardButton(
-                    text="🔄 Проверить все",
+                    text="↻ Проверить все",
                     callback_data="menu:run_all",
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="📤 Экспорт CSV",
+                    text="↓ Экспорт CSV",
                     callback_data="menu:export",
                 ),
             ],
@@ -86,21 +86,19 @@ def incidents_kb(has_incidents: bool = False) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
-                    text="🔁 Перепроверить упавшие",
+                    text="↻ Перепроверить упавшие",
                     callback_data="menu:run_failed",
                 ),
                 InlineKeyboardButton(
-                    text="❌ Список с ошибкой",
+                    text="✗ Список с ошибкой",
                     callback_data="menu:list:failed:0",
                 ),
             ]
         )
     rows.append(
         [
-            InlineKeyboardButton(
-                text="📋 Все мониторы", callback_data="menu:list:all:0"
-            ),
-            InlineKeyboardButton(text="🏠 Меню", callback_data="menu:home"),
+            InlineKeyboardButton(text="Все мониторы", callback_data="menu:list:all:0"),
+            InlineKeyboardButton(text="Меню", callback_data="menu:home"),
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -109,7 +107,7 @@ def incidents_kb(has_incidents: bool = False) -> InlineKeyboardMarkup:
 def cancel_fsm_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="✖️ Отмена", callback_data="fsm:cancel")]
+            [InlineKeyboardButton(text="✗ Отмена", callback_data="fsm:cancel")]
         ]
     )
 
@@ -125,7 +123,7 @@ def category_selection_kb() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="RPC Node", callback_data="cat:rpc_node"),
                 InlineKeyboardButton(text="DevOps / VPS", callback_data="cat:devops"),
             ],
-            [InlineKeyboardButton(text="✖️ Отмена", callback_data="fsm:cancel")],
+            [InlineKeyboardButton(text="✗ Отмена", callback_data="fsm:cancel")],
         ]
     )
 
@@ -141,7 +139,7 @@ def interval_selection_kb() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="Каждые 5 мин", callback_data="int:300"),
                 InlineKeyboardButton(text="Каждые 15 мин", callback_data="int:900"),
             ],
-            [InlineKeyboardButton(text="✖️ Отмена", callback_data="fsm:cancel")],
+            [InlineKeyboardButton(text="✗ Отмена", callback_data="fsm:cancel")],
         ]
     )
 
@@ -154,7 +152,7 @@ def priority_selection_kb() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="2 — Обычный", callback_data="prio:2"),
                 InlineKeyboardButton(text="3 — Критический", callback_data="prio:3"),
             ],
-            [InlineKeyboardButton(text="✖️ Отмена", callback_data="fsm:cancel")],
+            [InlineKeyboardButton(text="✗ Отмена", callback_data="fsm:cancel")],
         ]
     )
 
@@ -162,9 +160,9 @@ def priority_selection_kb() -> InlineKeyboardMarkup:
 def _build_filter_row(status_filter: str) -> List[InlineKeyboardButton]:
     options = (
         ("all", "Все"),
-        ("completed", "✅"),
-        ("failed", "❌"),
-        ("pending", "⏳"),
+        ("completed", "✓"),
+        ("failed", "✗"),
+        ("pending", "·"),
     )
     return [
         InlineKeyboardButton(
@@ -182,7 +180,7 @@ def _build_pagination_row(
     if page > 0:
         nav.append(
             InlineKeyboardButton(
-                text="◀️",
+                text="←",
                 callback_data=f"menu:list:{status_filter}:{page - 1}",
             )
         )
@@ -195,7 +193,7 @@ def _build_pagination_row(
     if page + 1 < total_pages:
         nav.append(
             InlineKeyboardButton(
-                text="▶️",
+                text="→",
                 callback_data=f"menu:list:{status_filter}:{page + 1}",
             )
         )
@@ -211,8 +209,8 @@ def tasks_list_kb(
     rows = [_build_filter_row(status_filter)]
 
     for task in tasks:
-        icon = STATUS_ICONS.get(task.status, "📌")
-        pause = "⏸" if not task.enabled else ""
+        icon = STATUS_ICONS.get(task.status, "·")
+        pause = "‖" if not task.enabled else ""
         label = f"{icon}{pause} #{task.id} {_truncate(task.title)} (P{task.priority})"
         rows.append(
             [InlineKeyboardButton(text=label, callback_data=f"task:view:{task.id}")]
@@ -223,16 +221,16 @@ def tasks_list_kb(
 
     rows.append(
         [
-            InlineKeyboardButton(text="⏸ Пауза всех", callback_data="menu:pause_all"),
+            InlineKeyboardButton(text="‖ Пауза всех", callback_data="menu:pause_all"),
             InlineKeyboardButton(
-                text="▶️ Запустить всех", callback_data="menu:resume_all"
+                text="▸ Запустить всех", callback_data="menu:resume_all"
             ),
         ]
     )
     rows.append(
         [
-            InlineKeyboardButton(text="🔄 Проверить все", callback_data="menu:run_all"),
-            InlineKeyboardButton(text="🏠 Меню", callback_data="menu:home"),
+            InlineKeyboardButton(text="↻ Проверить все", callback_data="menu:run_all"),
+            InlineKeyboardButton(text="Меню", callback_data="menu:home"),
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -243,30 +241,30 @@ def task_actions_kb(task: TaskDTO) -> InlineKeyboardMarkup:
     next_iv = _next_interval(task.check_interval_sec)
     next_thr = _next_threshold(task.alert_threshold)
     toggle_label = (
-        "⏸ Пауза авто-проверки" if task.enabled else "▶️ Включить авто-проверку"
+        "‖ Пауза авто-проверки" if task.enabled else "▸ Возобновить авто-проверку"
     )
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="▶️ Проверить сейчас",
+                    text="▸ Проверить сейчас",
                     callback_data=f"task:run:{task.id}",
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=f"🔁 P{task.priority} → P{next_prio}",
+                    text=f"P{task.priority} → P{next_prio}",
                     callback_data=f"task:prio:{task.id}:{next_prio}",
                 ),
                 InlineKeyboardButton(
-                    text=f"⏱ {_interval_short(task.check_interval_sec)} → "
+                    text=f"интервал: {_interval_short(task.check_interval_sec)} → "
                     f"{_interval_short(next_iv)}",
                     callback_data=f"task:int:{task.id}:{next_iv}",
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text=f"🔔 Порог {task.alert_threshold} → {next_thr}",
+                    text=f"Порог {task.alert_threshold} → {next_thr}",
                     callback_data=f"task:thr:{task.id}:{next_thr}",
                 ),
                 InlineKeyboardButton(
@@ -276,21 +274,21 @@ def task_actions_kb(task: TaskDTO) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="📜 Логи (10)",
+                    text="Логи (10)",
                     callback_data=f"task:logs:{task.id}",
                 ),
                 InlineKeyboardButton(
-                    text="📥 Логи CSV",
+                    text="↓ Логи CSV",
                     callback_data=f"task:logscsv:{task.id}",
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="🗑 Удалить",
+                    text="✗ Удалить",
                     callback_data=f"task:del_ask:{task.id}",
                 ),
                 InlineKeyboardButton(
-                    text="◀️ К списку",
+                    text="← К списку",
                     callback_data="menu:list:all:0",
                 ),
             ],
@@ -303,11 +301,11 @@ def delete_confirm_kb(task_id: int) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="✅ Да, удалить",
+                    text="✓ Да, удалить",
                     callback_data=f"task:del_confirm:{task_id}",
                 ),
                 InlineKeyboardButton(
-                    text="↩️ Отмена",
+                    text="✗ Отмена",
                     callback_data=f"task:view:{task_id}",
                 ),
             ]
