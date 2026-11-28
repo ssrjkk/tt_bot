@@ -1,0 +1,130 @@
+<!doctype html>
+<!--
+  Исходник социальной карточки docs/og-card.png (1200×630), а не страница сайта.
+  Рендер (тот же Chromium, что и на десктопе):
+
+    chrome --headless=new --disable-gpu --hide-scrollbars \
+      --window-size=1200,630 --screenshot=docs/og-card.png docs/og-card.html
+
+  Версия в карточке проверяется тем же гейтом, что и лендинг:
+  tests/test_probes.py::test_landing_page_version_claims_match_the_bot.
+-->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --desk:#ebe4d4; --desk-dot:#d2c8b4; --paper:#fffdf7; --sheet-border:#bfb5a0;
+    --line:#d8e3f2; --margin:#df7d8a; --ink:#111827; --muted:#475467;
+    --pen:#1d4ed8; --red:#be123c; --green:#0d6e4f; --sticky-yellow:#fff199;
+    --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+    --sans:'Inter',system-ui,-apple-system,sans-serif;
+    --hand:'Caveat','Comic Sans MS',cursive;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1200px;height:630px;overflow:hidden}
+  body{
+    position:relative;background:var(--desk);font-family:var(--sans);color:var(--ink);
+    background-image:radial-gradient(var(--desk-dot) 1.4px,transparent 1.4px);
+    background-size:22px 22px;
+  }
+  .sheet{
+    position:absolute;left:34px;top:26px;width:1132px;height:578px;
+    background:var(--paper);border:2px solid var(--sheet-border);
+    box-shadow:6px 6px 0 rgba(17,24,39,.18);
+    background-image:repeating-linear-gradient(180deg,transparent 0 33px,var(--line) 33px 34px);
+  }
+  .sheet::before{content:"";position:absolute;left:78px;top:0;bottom:0;width:2px;background:var(--margin)}
+  .holes{position:absolute;left:22px;top:0;bottom:0;width:26px;display:flex;flex-direction:column;
+    justify-content:space-around;align-items:center}
+  .hole{width:20px;height:20px;border-radius:50%;background:var(--desk);border:2px solid #cfc6b2}
+  .rev{position:absolute;right:26px;top:20px;font-family:var(--mono);font-size:17px;color:#8b8574;letter-spacing:.04em}
+  .head{position:absolute;left:120px;top:44px;display:flex;align-items:center;gap:18px}
+  .brand{font-family:var(--mono);font-weight:700;font-size:44px;color:var(--pen)}
+  .stamp{
+    font-family:var(--mono);font-weight:700;font-size:22px;color:var(--red);
+    border:3px solid var(--red);padding:4px 14px;transform:rotate(-1.5deg);background:rgba(255,255,255,.6)
+  }
+  h1{position:absolute;left:120px;top:118px;font-size:56px;line-height:1.06;font-weight:800;letter-spacing:-.02em}
+  h1 .accent{color:var(--pen);border-bottom:5px solid var(--red);padding-bottom:2px}
+  .sub{position:absolute;left:120px;top:250px;font-size:23px;line-height:1.5;color:var(--muted)}
+  .sub b{color:var(--ink);font-weight:600}
+  .bars{position:absolute;left:120px;top:318px;display:flex;align-items:center;gap:6px}
+  .sq{width:22px;height:22px;background:var(--green)}
+  .sq.bad{background:var(--red)}
+  .sla{margin-left:14px;font-family:var(--mono);font-size:20px;color:var(--green);font-weight:600}
+  ul.rows{position:absolute;left:120px;top:360px;width:596px;list-style:none;font-family:var(--mono);font-size:20px}
+  ul.rows li{display:flex;align-items:center;gap:12px;height:34px}
+  .box{width:22px;height:22px;border:2px solid var(--pen);display:flex;align-items:center;justify-content:center;
+    color:var(--pen);font-size:15px;font-weight:700}
+  .box.no{border-color:var(--red);color:var(--red)}
+  .url{color:var(--ink)}
+  .url.down{color:var(--red)}
+  .ms{margin-left:auto;color:var(--green);width:132px;text-align:right;white-space:nowrap}
+  .ms.bad{color:var(--red)}
+  .note{
+    position:absolute;right:44px;top:70px;width:352px;background:var(--sticky-yellow);
+    border:2px solid rgba(17,24,39,.16);box-shadow:5px 6px 0 rgba(17,24,39,.22);padding:22px 24px 26px
+  }
+  .note::before{content:"";position:absolute;left:50%;top:-16px;transform:translateX(-50%);
+    width:96px;height:26px;background:rgba(255,255,255,.55);border:1px solid rgba(17,24,39,.12)}
+  .note h2{font-family:var(--mono);font-size:21px;color:var(--pen);letter-spacing:.03em;margin-bottom:14px}
+  .note li{list-style:none;font-size:19px;line-height:1.72;display:flex;gap:10px}
+  .note li::before{content:"•";color:var(--ink);font-weight:700}
+  .handle{position:absolute;right:52px;bottom:26px;font-family:var(--mono);font-size:21px;color:var(--pen)}
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="holes">
+      <span class="hole"></span><span class="hole"></span><span class="hole"></span>
+      <span class="hole"></span><span class="hole"></span><span class="hole"></span>
+    </div>
+    <div class="rev">+ REV 2.4 · SPEC-18 +</div>
+
+    <div class="head">
+      <span class="brand">tt_bot</span>
+      <span class="stamp">v2.4 · strict</span>
+    </div>
+
+    <h1>Self-hosted Telegram<br><span class="accent">chat-ops monitor</span></h1>
+
+    <p class="sub">
+      <b>HTTP/HTTPS · TCP · TLS/SSL · SSRF guard</b><br>
+      /add · /link · /tree · /incidents · SQLite WAL
+    </p>
+
+    <div class="bars">
+      <span class="sq"></span><span class="sq"></span><span class="sq"></span><span class="sq"></span>
+      <span class="sq bad"></span><span class="sq"></span><span class="sq"></span><span class="sq"></span>
+      <span class="sq"></span><span class="sq"></span>
+      <span class="sla">99.1% SLA · SSL 84d</span>
+    </div>
+
+    <ul class="rows">
+      <li><span class="box">✓</span><span class="url">https://api.example.com/health</span><span class="ms">38 ms</span></li>
+      <li><span class="box">✓</span><span class="url">tcp://rpc-01.example.net:8545</span><span class="ms">64 ms</span></li>
+      <li><span class="box no">✗</span><span class="url down">http://127.0.0.1:8080/admin</span><span class="ms bad">SSRF BLOCK</span></li>
+      <li><span class="box no">✗</span><span class="url down">tcp://db-01.example.net:5432</span><span class="ms bad">симптом · #1</span></li>
+    </ul>
+
+    <div class="note">
+      <h2>PRODUCTION v2.4</h2>
+      <ul>
+        <li>Python 3.12 + aiogram 3</li>
+        <li>HTTP + TCP + SSL + /expect</li>
+        <li>_SafeResolver SSRF guard</li>
+        <li>/link + /tree: алерт у причины</li>
+        <li>Throttle + IDOR + CSV guard</li>
+        <li>Sparkline + Maintenance UI</li>
+        <li>JSON logs · Docker non-root</li>
+      </ul>
+    </div>
+
+    <div class="handle">github.com/ssrjkk/tt_bot</div>
+  </div>
+</body>
+</html>
