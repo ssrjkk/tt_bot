@@ -37,6 +37,11 @@ STATUS_BADGES = {
     "running": "🔄 RUNNING",
 }
 
+TREE_MARKS = {"completed": "✓", "failed": "✗", "pending": "—", "running": "→"}
+TREE_MAX_DEPTH = 6
+# Лимит Telegram на длину сообщения — 4096; берём с запасом на шапку и счётчик.
+TREE_CHAR_BUDGET = 3500
+
 
 def _parse_int(value: Optional[str]) -> Optional[int]:
     if value is None:
@@ -144,6 +149,11 @@ def _render_task_card(
         f"▪️ Цикл: {_format_interval(task.check_interval_sec)} ({state_label}) · "
         f"алерт ≥ {task.alert_threshold}",
     ]
+    if task.parent_id:
+        lines.append(
+            f"▪️ Зависит от: <b>#{task.parent_id}</b> · "
+            f"<code>/link {task.id} -</code> сбрасывает"
+        )
     if task.expected_text:
         lines.append(
             f"▪️ Тело: содержит <code>{html.escape(task.expected_text)}</code>"
@@ -169,12 +179,23 @@ def _render_stats_text(stats: dict) -> str:
         f"▪️ С ошибкой (DOWN): <b>{stats['failed']}</b>\n"
         f"▪️ В ожидании (Pending): <b>{stats['pending']}</b>\n"
         f"▪️ Проверок за 24ч: <b>{stats['checks_24h']}</b>\n"
+        f"▪️ Алертов подавлено (24ч): "
+        f"<b>{stats['suppressed_24h']}</b> · <code>/tree</code>\n"
         f"▪️ Uptime (SLA 24ч): "
         f"<code>{_build_sla_meter(stats['uptime_24h_pct'])}</code> "
         f"<b>{stats['uptime_24h_pct']}%</b>\n"
         f"▪️ Средний latency: <code>{stats['avg_latency_ms']} мс</code>\n"
         f"▪️ P95 latency: <code>{stats['p95_latency_ms']} мс</code>"
     )
+
+
+def _incident_reason_tag(item: dict) -> str:
+    root_id = item.get("root_id")
+    if not root_id:
+        return ""
+    state = "симптом" if item.get("suppressed") else "в тени"
+    root_title = html.escape(str(item.get("root_title") or "")[:28])
+    return f"\n   <code>{state}</code> · причина <b>#{root_id}</b> {root_title}"
 
 
 def _render_incidents_text(incidents: List[dict]) -> str:
@@ -186,9 +207,89 @@ def _render_incidents_text(incidents: List[dict]) -> str:
         lines.append(
             f"❌ <b>#{item['task_id']} {html.escape(item['title'])}</b>\n"
             f"   <code>{ts}</code> · {item['latency_ms']} мс · "
-            f"{html.escape(str(item['details'])[:60])}"
+            f"{html.escape(str(item['details'])[:60])}" + _incident_reason_tag(item)
         )
     return "\n".join(lines)
+
+
+def _split_tree(tasks: List[TaskDTO]) -> tuple[dict, dict, list]:
+    by_id = {task.id: task for task in tasks if task.id is not None}
+    kids: Dict[int, List[int]] = {}
+    roots: List[int] = []
+    for task in tasks:
+        parent = by_id.get(task.parent_id or -1)
+        if parent is None or parent.id == task.id:
+            roots.append(task.id)
+        else:
+            kids.setdefault(parent.id, []).append(task.id)
+    return by_id, kids, roots
+
+
+def _tree_line(task: TaskDTO, branch: str, note: str = "") -> str:
+    mark = TREE_MARKS.get(task.status, "—")
+    pause = " · пауза" if not task.enabled else ""
+    title = html.escape((task.title or "")[:32])
+    return (
+        f"{branch}{mark} <b>#{task.id}</b> {title} "
+        f"<code>{task.status.upper()}</code>{pause}{note}"
+    )
+
+
+def _walk_tree(
+    by_id: dict,
+    kids: Dict[int, List[int]],
+    seen: set,
+    lines: List[str],
+    task_id: int,
+    depth: int,
+) -> None:
+    seen.add(task_id)
+    children = kids.get(task_id, [])
+    for idx, child_id in enumerate(children):
+        last = idx == len(children) - 1
+        branch = "  " * depth + ("└─ " if last else "├─ ")
+        child = by_id[child_id]
+        if child_id in seen:
+            lines.append(_tree_line(child, branch, " · ⟲ цикл"))
+        elif depth >= TREE_MAX_DEPTH:
+            lines.append(_tree_line(child, branch, " · глубина обрезана"))
+        else:
+            lines.append(_tree_line(child, branch))
+            _walk_tree(by_id, kids, seen, lines, child_id, depth + 1)
+
+
+def _render_tree_text(tasks: List[TaskDTO]) -> str:
+    if not tasks:
+        return (
+            "<b>Дерево мониторов пусто.</b>\n"
+            "Добавьте сервис: <code>/add Название https://url [мин]</code>"
+        )
+    by_id, kids, roots = _split_tree(tasks)
+    lines: List[str] = []
+    seen: set = set()
+    for root_id in roots:
+        lines.append(_tree_line(by_id[root_id], ""))
+        _walk_tree(by_id, kids, seen, lines, root_id, 0)
+    loops = [task for task in tasks if task.id not in seen]
+    if loops:
+        lines.append("\n<b>Вне дерева:</b>")
+        for task in loops:
+            note = f" · предок #{task.parent_id} вне дерева"
+            lines.append(_tree_line(task, "", note))
+    body: List[str] = []
+    used = 0
+    for line in lines:
+        used += len(line) + 1
+        if used > TREE_CHAR_BUDGET:
+            break
+        body.append(line)
+    if len(body) < len(lines):
+        body.append(f"<i>… ещё {len(lines) - len(body)} узлов</i>")
+    links = sum(
+        1 for task in tasks if task.parent_id in by_id and task.parent_id != task.id
+    )
+    header = f"<b>Дерево мониторов</b> · узлов {len(tasks)} · связей {links}\n\n"
+    return header + "\n".join(body)
 
 
 async def _load_card_view(
@@ -247,6 +348,8 @@ async def cmd_help(message: Message) -> None:
         "• /start — главное меню и сводка\n"
         "• /add <code>Название https://url [мин]</code> — быстрое создание\n"
         "• /expect <code>ID строка|-</code> — проверка текста в ответе\n"
+        "• /link <code>ID РОДИТЕЛЬ|-</code> — зависимость в дереве мониторинга\n"
+        "• /tree — дерево сервисов и подавленные по причине алерты\n"
         "• /status — список мониторов одной сводкой\n"
         "• /incidents — последние инциденты и быстрый ретрай\n"
         "• /stats — аналитика и SLA за 24 часа\n"
@@ -358,6 +461,62 @@ async def cmd_expect(message: Message, repo: DatabaseRepository) -> None:
     )
 
 
+def _parse_link_args(text: Optional[str]) -> tuple[Optional[int], Optional[int], bool]:
+    """(ребёнок, родитель, разобралось_ли) для /link ID PARENT|-."""
+    parts = (text or "").split(maxsplit=2)
+    if len(parts) < 3:
+        return None, None, False
+    child_id = _parse_int(parts[1])
+    raw_parent = parts[2].strip()
+    if child_id is None:
+        return None, None, False
+    if raw_parent == "-":
+        return child_id, None, True
+    parent_id = _parse_int(raw_parent)
+    if parent_id is None:
+        return None, None, False
+    return child_id, parent_id, True
+
+
+@router.message(Command("link"))
+async def cmd_link(message: Message, repo: DatabaseRepository) -> None:
+    child_id, parent_id, parsed = _parse_link_args(message.text)
+    if not parsed:
+        await message.answer(
+            "Формат: <code>/link 12 7</code> — монитор 12 зависит от 7.\n"
+            "Сброс связи: <code>/link 12 -</code>",
+            parse_mode="HTML",
+        )
+        return
+    user_id = message.from_user.id
+    try:
+        linked = await repo.set_task_parent(child_id, parent_id, user_id=user_id)
+    except ValueError as exc:
+        await message.answer(
+            f"Связь отклонена: {html.escape(str(exc))}", parse_mode="HTML"
+        )
+        return
+    if not linked:
+        await message.answer("Монитор не найден или нет доступа.")
+        return
+    tasks = await repo.get_user_tasks(user_id)
+    target = f"#{parent_id}" if parent_id is not None else "сброшена"
+    await message.answer(
+        f"✓ Связь обновлена: <b>#{child_id}</b> → зависимость {target}.\n\n"
+        + _render_tree_text(tasks),
+        reply_markup=main_menu_kb(),
+        parse_mode="HTML",
+    )
+
+
+@router.message(Command("tree"))
+async def cmd_tree(message: Message, repo: DatabaseRepository) -> None:
+    tasks = await repo.get_user_tasks(message.from_user.id)
+    await message.answer(
+        _render_tree_text(tasks), reply_markup=main_menu_kb(), parse_mode="HTML"
+    )
+
+
 @router.message(Command("status"))
 async def cmd_status(message: Message, repo: DatabaseRepository) -> None:
     tasks = await repo.get_user_tasks(message.from_user.id, limit=15)
@@ -449,6 +608,13 @@ async def cb_incidents(call: CallbackQuery, repo: DatabaseRepository) -> None:
     await _safe_edit(
         call, _render_incidents_text(incidents), incidents_kb(bool(incidents))
     )
+    await call.answer()
+
+
+@router.callback_query(F.data == "menu:tree")
+async def cb_tree(call: CallbackQuery, repo: DatabaseRepository) -> None:
+    tasks = await repo.get_user_tasks(call.from_user.id)
+    await _safe_edit(call, _render_tree_text(tasks), main_menu_kb())
     await call.answer()
 
 

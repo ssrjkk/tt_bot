@@ -14,7 +14,7 @@ from src.models import ProbeResult
 
 ALLOWED_SCHEMES = {"http", "https", "tcp"}
 MAX_BODY_INSPECT_BYTES = 65536
-BOT_VERSION = "2.3"
+BOT_VERSION = "2.4"
 
 
 def normalize_endpoint(raw: str) -> str:

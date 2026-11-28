@@ -1,3 +1,5 @@
+import inspect
+import re
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -5,8 +7,14 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, User
 
+from src import handlers as handlers_module
 from src.handlers import (
+    _parse_link_args,
     _parse_quick_add_args,
+    _render_incidents_text,
+    _render_stats_text,
+    _render_task_card,
+    _render_tree_text,
     _safe_edit,
     cb_create_start,
     cb_export_csv,
@@ -30,15 +38,18 @@ from src.handlers import (
     cb_task_toggle,
     cb_task_view,
     cb_tasks_list,
+    cb_tree,
     cmd_cancel,
     cmd_expect,
     cmd_export,
     cmd_help,
     cmd_incidents,
+    cmd_link,
     cmd_quick_add,
     cmd_start,
     cmd_stats,
     cmd_status,
+    cmd_tree,
     fsm_process_category,
     fsm_process_endpoint,
     fsm_process_interval,
@@ -59,6 +70,8 @@ from src.keyboards import (
     tasks_list_kb,
 )
 from src.models import TaskDTO, UserDTO
+
+TELEGRAM_MAX_LEN = 4096
 
 
 def _make_user(
@@ -479,3 +492,281 @@ async def test_task_run_announces_unsaved_result(db_repo, worker_pool, monkeypat
     assert "не сохранён" in rendered
     assert "✅" not in rendered
     assert "❌" not in rendered
+
+
+def _tree_task(user_id: int, title: str, endpoint: str) -> TaskDTO:
+    return TaskDTO(
+        id=None,
+        user_id=user_id,
+        title=title,
+        category="backend",
+        target_endpoint=endpoint,
+        status="failed",
+    )
+
+
+@pytest.mark.asyncio
+async def test_cmd_link_and_cmd_tree_surfaces(db_repo):
+    await db_repo.upsert_user(UserDTO(id=3201, username="lnk", full_name="Lnk"))
+    parent = await db_repo.create_task(
+        _tree_task(3201, "Edge proxy", "https://p.example")
+    )
+    child = await db_repo.create_task(_tree_task(3201, "Pay API", "https://c.example"))
+
+    msg = _make_message(3201, "/link")
+    await cmd_link(msg, db_repo)
+    assert "Формат:" in msg.answer.call_args[0][0]
+
+    await cmd_link(_make_message(3201, "/link abc 1"), db_repo)
+    assert "Формат:" in msg.answer.call_args[0][0]
+
+    missing = _make_message(3201, f"/link {child} 99999")
+    await cmd_link(missing, db_repo)
+    assert "Связь отклонена" in missing.answer.call_args[0][0]
+
+    loop = _make_message(3201, f"/link {child} {child}")
+    await cmd_link(loop, db_repo)
+    assert "сам себе" in loop.answer.call_args[0][0]
+
+    ok = _make_message(3201, f"/link {child} {parent}")
+    await cmd_link(ok, db_repo)
+    rendered = ok.answer.call_args[0][0]
+    assert "Связь обновлена" in rendered
+    assert "└─" in rendered and f"#{child}" in rendered
+    assert (await db_repo.get_task_by_id(child)).parent_id == parent
+
+    tree_msg = _make_message(3201, "/tree")
+    await cmd_tree(tree_msg, db_repo)
+    tree_text = tree_msg.answer.call_args[0][0]
+    assert "Дерево мониторов" in tree_text
+    assert "узлов 2 · связей 1" in tree_text
+    assert "✗" in tree_text
+
+    reset = _make_message(3201, f"/link {child} -")
+    await cmd_link(reset, db_repo)
+    assert "сброшена" in reset.answer.call_args[0][0]
+    assert (await db_repo.get_task_by_id(child)).parent_id is None
+
+
+@pytest.mark.asyncio
+async def test_cmd_link_blocks_other_users_monitors(db_repo):
+    await db_repo.upsert_user(UserDTO(id=3202, username="own", full_name="Own"))
+    await db_repo.upsert_user(UserDTO(id=3203, username="intr", full_name="Intr"))
+    victim = await db_repo.create_task(
+        _tree_task(3202, "Secret <b>svc</b>", "https://v.example")
+    )
+    attacker = await db_repo.create_task(_tree_task(3203, "Mine", "https://a.example"))
+
+    msg = _make_message(3203, f"/link {attacker} {victim}")
+    await cmd_link(msg, db_repo)
+    answer = msg.answer.call_args[0][0]
+    assert "Связь отклонена" in answer
+    assert "Secret" not in answer
+    assert (await db_repo.get_task_by_id(attacker)).parent_id is None
+
+    steal = _make_message(3203, f"/link {victim} {attacker}")
+    await cmd_link(steal, db_repo)
+    assert "нет доступа" in steal.answer.call_args[0][0]
+    assert (await db_repo.get_task_by_id(victim)).parent_id is None
+
+
+@pytest.mark.asyncio
+async def test_cb_tree_renders_dependency_tree(db_repo):
+    await db_repo.upsert_user(UserDTO(id=3204, username="cb", full_name="Cb"))
+    parent = await db_repo.create_task(_tree_task(3204, "Root", "https://r.example"))
+    child = await db_repo.create_task(_tree_task(3204, "Leaf", "https://l.example"))
+    await db_repo.set_task_parent(child, parent, user_id=3204)
+
+    call = _make_call(3204, "menu:tree")
+    await cb_tree(call, db_repo)
+    text = call.message.edit_text.call_args[0][0]
+    assert "└─" in text and f"#{child}" in text
+    call.answer.assert_called_once()
+
+
+def test_render_tree_text_covers_empty_orphan_and_deep_shapes():
+    assert "пусто" in _render_tree_text([])
+
+    def node(tid, title, parent=None, status="completed", depth_hint=""):
+        return TaskDTO(
+            id=tid,
+            user_id=1,
+            title=f"{title}{depth_hint}",
+            category="backend",
+            target_endpoint=f"https://{title}.example",
+            status=status,
+            parent_id=parent,
+        )
+
+    closed = _render_tree_text([node(1, "a"), node(2, "b", parent=1)])
+    assert "связей 1" in closed and "└─" in closed
+
+    cycle = _render_tree_text(
+        [
+            node(1, "a", parent=2, status="failed"),
+            node(2, "b", parent=1, status="failed"),
+        ]
+    )
+    assert "Вне дерева:" in cycle and "связей 2" in cycle
+
+    deep = [node(1, "n1")]
+    for idx in range(2, 13):
+        deep.append(node(idx, f"n{idx}", parent=idx - 1))
+    rendered = _render_tree_text(deep)
+    assert "глубина обрезана" in rendered
+    assert rendered.count("└─") <= handlers_module.TREE_MAX_DEPTH + 1
+
+    wide = [node(1, "root")] + [node(idx, f"x{idx}", parent=1) for idx in range(2, 400)]
+    capped = _render_tree_text(wide)
+    assert "ещё" in capped and len(capped) < TELEGRAM_MAX_LEN
+
+    # html.escape раздувает заголовок в 6 раз уже после обрезки до 32 символов,
+    # поэтому лимит должен считаться по знакам, а не по числу строк.
+    loud = [node(1, "root")] + [
+        node(idx, "<&>\"'=" * 40, parent=1) for idx in range(2, 400)
+    ]
+    noisy = _render_tree_text(loud)
+    assert "&lt;&amp;&gt;" in noisy and len(noisy) < TELEGRAM_MAX_LEN
+
+
+def test_tree_rendering_escapes_html_in_titles():
+    task = TaskDTO(
+        id=5,
+        user_id=1,
+        title="<script>alert(1)</script>",
+        category="backend",
+        target_endpoint="https://x.example",
+        status="failed",
+    )
+    out = _render_tree_text([task])
+    assert "<script>" not in out and "&lt;script&gt;" in out
+
+
+def test_incidents_and_stats_surface_root_cause():
+    incidents = [
+        {
+            "task_id": 12,
+            "title": "Pay API",
+            "executed_at": "2026-11-28T10:00:00",
+            "latency_ms": 30.0,
+            "details": "HTTP 502",
+            "suppressed": 1,
+            "root_id": 7,
+            "root_title": "Edge proxy",
+        },
+        {
+            "task_id": 13,
+            "title": "Standalone",
+            "executed_at": "2026-11-28T10:05:00",
+            "latency_ms": 40.0,
+            "details": "timeout",
+            "suppressed": 0,
+            "root_id": None,
+            "root_title": None,
+        },
+        {
+            "task_id": 14,
+            "title": "Workers",
+            "executed_at": "2026-11-28T10:07:00",
+            "latency_ms": 55.0,
+            "details": "HTTP 500",
+            "suppressed": 0,
+            "root_id": 8,
+            "root_title": "DB",
+        },
+    ]
+    text = _render_incidents_text(incidents)
+    assert "<code>симптом</code> · причина <b>#7</b> Edge proxy" in text
+    assert "<code>в тени</code> · причина <b>#8</b> DB" in text
+    assert text.count("причина") == 2
+
+    stats = {
+        "total": 3,
+        "completed": 1,
+        "failed": 1,
+        "pending": 1,
+        "running": 0,
+        "checks_24h": 10,
+        "suppressed_24h": 4,
+        "uptime_24h_pct": 60.0,
+        "avg_latency_ms": 12.0,
+        "p95_latency_ms": 20.0,
+    }
+    assert "Алертов подавлено (24ч): <b>4</b>" in _render_stats_text(stats)
+
+    task = TaskDTO(
+        id=9,
+        user_id=1,
+        title="Pay API",
+        category="backend",
+        target_endpoint="https://api.example",
+        status="failed",
+        parent_id=7,
+    )
+    card = _render_task_card(task)
+    assert "Зависит от: <b>#7</b>" in card and "/link 9 -" in card
+    assert "Зависит от" not in _render_task_card(
+        TaskDTO(
+            id=9,
+            user_id=1,
+            title="Solo",
+            category="backend",
+            target_endpoint="https://api.example",
+            status="failed",
+        )
+    )
+
+
+def _all_keyboard_callbacks() -> set:
+    task = TaskDTO(
+        id=7,
+        user_id=7,
+        title="Btn",
+        category="backend",
+        target_endpoint="https://btn.example",
+        priority=2,
+        status="failed",
+    )
+    keyboards = [
+        main_menu_kb(),
+        incidents_kb(True),
+        incidents_kb(False),
+        cancel_fsm_kb(),
+        category_selection_kb(),
+        interval_selection_kb(),
+        priority_selection_kb(),
+        tasks_list_kb([task], page=0, total_pages=2),
+        task_actions_kb(task),
+        delete_confirm_kb(7),
+    ]
+    return {
+        button.callback_data
+        for kb in keyboards
+        for row in kb.inline_keyboard
+        for button in row
+    }
+
+
+def test_every_keyboard_callback_is_routed():
+    """Инвариант ARCHITECTURE.md: у каждой кнопки есть обработчик."""
+    source = inspect.getsource(handlers_module)
+    exact = set(re.findall(r'F\.data == "([^"]+)"', source))
+    prefixes = set(re.findall(r'F\.data\.startswith\("([^"]+)"\)', source))
+    callbacks = _all_keyboard_callbacks()
+    unrouted = {
+        data
+        for data in callbacks
+        if data not in exact and not any(data.startswith(p) for p in prefixes)
+    }
+    assert unrouted == set()
+    assert "menu:tree" in callbacks
+
+
+def test_parse_link_args_shapes():
+    assert _parse_link_args("/link 3 5") == (3, 5, True)
+    assert _parse_link_args("/link 3 -") == (3, None, True)
+    assert _parse_link_args("/link 3") == (None, None, False)
+    assert _parse_link_args("/link") == (None, None, False)
+    assert _parse_link_args("/link a 5") == (None, None, False)
+    assert _parse_link_args("/link 5 шесть") == (None, None, False)
+    assert _parse_link_args(None) == (None, None, False)

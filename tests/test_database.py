@@ -259,5 +259,170 @@ async def test_schema_migration_from_v1(tmp_path):
         assert task.expected_text == ""
         assert task.ssl_min_days == 14
         assert task.enabled is True
+        assert task.parent_id is None
+
+        log = await repo.record_check_result(
+            task_id=1,
+            result_status="failed",
+            latency_ms=11.0,
+            details="HTTP 500",
+            status_code=500,
+            consecutive_failures=1,
+            suppressed=True,
+            root_task_id=None,
+        )
+        assert log.suppressed is True
+        assert (await repo.get_task_logs(1))[-1].suppressed is True
+        assert (await repo.get_analytics_summary(1))["suppressed_24h"] == 1
     finally:
         await repo.close()
+
+
+async def _mk(db_repo, user_id: int, title: str, endpoint: str = "") -> int:
+    return await db_repo.create_task(
+        TaskDTO(
+            id=None,
+            user_id=user_id,
+            title=title,
+            category="backend",
+            target_endpoint=endpoint or f"https://{title.lower()}.example",
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_parent_link_rejects_self_foreign_user_and_cycle(db_repo):
+    await db_repo.upsert_user(UserDTO(id=4101, username="a", full_name="A"))
+    await db_repo.upsert_user(UserDTO(id=4102, username="b", full_name="B"))
+    own = await _mk(db_repo, 4101, "own")
+    other = await _mk(db_repo, 4102, "other")
+
+    with pytest.raises(ValueError, match="сам себе"):
+        await db_repo.set_task_parent(own, own, user_id=4101)
+    with pytest.raises(ValueError, match="другому пользователю"):
+        await db_repo.set_task_parent(own, other, user_id=4101)
+    with pytest.raises(ValueError, match="другому пользователю"):
+        await db_repo.set_task_parent(own, 99999, user_id=4101)
+
+    # Чужой монитор нельзя перепривязать, даже зная его id.
+    assert await db_repo.set_task_parent(other, own, user_id=4101) is False
+    assert (await db_repo.get_task_by_id(other)).parent_id is None
+
+    child = await _mk(db_repo, 4101, "child")
+    assert await db_repo.set_task_parent(child, own, user_id=4101) is True
+    assert (await db_repo.get_task_by_id(child)).parent_id == own
+    with pytest.raises(ValueError, match="цикл"):
+        await db_repo.set_task_parent(own, child, user_id=4101)
+    assert (await db_repo.get_task_by_id(own)).parent_id is None
+
+    assert await db_repo.set_task_parent(child, None, user_id=4101) is True
+    assert (await db_repo.get_task_by_id(child)).parent_id is None
+
+
+@pytest.mark.asyncio
+async def test_link_chain_stops_at_max_tree_depth(db_repo):
+    from src.database import MAX_TREE_DEPTH
+
+    await db_repo.upsert_user(UserDTO(id=4103, username="d", full_name="D"))
+    ids = [await _mk(db_repo, 4103, "root")]
+    links = 0
+    for idx in range(1, MAX_TREE_DEPTH + 5):
+        tid = await _mk(db_repo, 4103, f"node{idx}")
+        try:
+            await db_repo.set_task_parent(tid, ids[-1], user_id=4103)
+        except ValueError as exc:
+            assert f"Цепочка длиннее {MAX_TREE_DEPTH}" in str(exc)
+            break
+        ids.append(tid)
+        links += 1
+    assert links == MAX_TREE_DEPTH
+
+
+@pytest.mark.asyncio
+async def test_find_root_cause_picks_topmost_failed_ancestor(db_repo):
+    await db_repo.upsert_user(UserDTO(id=4104, username="r", full_name="R"))
+    top = await _mk(db_repo, 4104, "edge")
+    mid = await _mk(db_repo, 4104, "api")
+    leaf = await _mk(db_repo, 4104, "worker")
+    await db_repo.set_task_parent(mid, top, user_id=4104)
+    await db_repo.set_task_parent(leaf, mid, user_id=4104)
+
+    assert await db_repo.find_root_cause(leaf) is None
+    await db_repo.update_task_status(mid, "failed")
+    assert (await db_repo.find_root_cause(leaf)).id == mid
+    await db_repo.update_task_status(top, "failed")
+    assert (await db_repo.find_root_cause(leaf)).id == top
+    assert (await db_repo.find_root_cause(mid)).id == top
+    assert await db_repo.find_root_cause(top) is None
+
+    # Выключенный предок со статусом failed — устаревшие данные, не причина.
+    await db_repo.toggle_task_enabled(top, user_id=4104)
+    assert (await db_repo.find_root_cause(leaf)).id == mid
+
+
+@pytest.mark.asyncio
+async def test_hand_written_cycle_does_not_hang_ancestor_walk(db_repo):
+    await db_repo.upsert_user(UserDTO(id=4105, username="c", full_name="C"))
+    a = await _mk(db_repo, 4105, "a")
+    b = await _mk(db_repo, 4105, "b")
+    await db_repo.set_task_parent(b, a, user_id=4105)
+    await db_repo._db.execute("UPDATE tasks SET parent_id = ? WHERE id = ?", (b, a))
+    await db_repo._db.execute("UPDATE tasks SET status = 'failed'")
+    await db_repo._db.commit()
+
+    chain = await db_repo._ancestor_chain(a)
+    assert [node.id for node in chain] == [b]
+    assert (await db_repo.find_root_cause(a)).id == b
+
+
+@pytest.mark.asyncio
+async def test_delete_parent_detaches_children(db_repo):
+    await db_repo.upsert_user(UserDTO(id=4106, username="p", full_name="P"))
+    parent = await _mk(db_repo, 4106, "parent")
+    child = await _mk(db_repo, 4106, "child")
+    await db_repo.set_task_parent(child, parent, user_id=4106)
+
+    assert await db_repo.delete_task(parent, user_id=4106) is True
+    assert (await db_repo.get_task_by_id(child)).parent_id is None
+    assert await db_repo.find_root_cause(child) is None
+
+
+@pytest.mark.asyncio
+async def test_suppression_is_persisted_and_surfaced(db_repo):
+    await db_repo.upsert_user(UserDTO(id=4107, username="s", full_name="S"))
+    root = await _mk(db_repo, 4107, "proxy", "https://proxy.example")
+    symptom = await _mk(db_repo, 4107, "api", "https://api.example")
+    await db_repo.set_task_parent(symptom, root, user_id=4107)
+
+    log = await db_repo.record_check_result(
+        task_id=symptom,
+        result_status="failed",
+        latency_ms=42.0,
+        details="HTTP 502",
+        status_code=502,
+        consecutive_failures=2,
+        suppressed=True,
+        root_task_id=root,
+    )
+    assert log.suppressed is True
+    assert log.root_task_id == root
+
+    incidents = await db_repo.get_recent_incidents(4107, limit=5)
+    assert incidents[0]["suppressed"] == 1
+    assert incidents[0]["root_id"] == root
+    assert incidents[0]["root_title"] == "proxy"
+
+    summary = await db_repo.get_analytics_summary(4107)
+    assert summary["suppressed_24h"] == 1
+
+    plain = await db_repo.record_check_result(
+        task_id=root,
+        result_status="failed",
+        latency_ms=10.0,
+        details="HTTP 500",
+        status_code=500,
+        consecutive_failures=2,
+    )
+    assert plain.suppressed is False
+    assert plain.root_task_id is None
+    assert (await db_repo.get_analytics_summary(4107))["suppressed_24h"] == 1

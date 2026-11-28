@@ -62,9 +62,15 @@ def main_menu_kb() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
+                    text="Дерево зависимостей",
+                    callback_data="menu:tree",
+                ),
+                InlineKeyboardButton(
                     text="🔄 Проверить все",
                     callback_data="menu:run_all",
                 ),
+            ],
+            [
                 InlineKeyboardButton(
                     text="📤 Экспорт CSV",
                     callback_data="menu:export",

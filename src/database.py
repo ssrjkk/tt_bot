@@ -14,19 +14,31 @@ TASK_MIGRATIONS = (
     ("enabled", "INTEGER NOT NULL DEFAULT 1"),
     ("consecutive_failures", "INTEGER NOT NULL DEFAULT 0"),
     ("alert_threshold", "INTEGER NOT NULL DEFAULT 2"),
+    ("parent_id", "INTEGER"),
     ("last_checked_at", "TEXT"),
 )
 
 LOG_MIGRATIONS = (
     ("status_code", "INTEGER"),
     ("ssl_days_left", "INTEGER"),
+    ("suppressed", "INTEGER NOT NULL DEFAULT 0"),
+    ("root_task_id", "INTEGER"),
 )
+
+# Глубина цепи `parent_id`, которую движок ещё считает деревом, а не циклом.
+MAX_TREE_DEPTH = 12
 
 
 def _row_to_task(row: aiosqlite.Row) -> TaskDTO:
     data = dict(row)
     data["enabled"] = bool(data.get("enabled", 1))
     return TaskDTO(**data)
+
+
+def _row_to_log(row: aiosqlite.Row) -> ExecutionLogDTO:
+    data = dict(row)
+    data["suppressed"] = bool(data.get("suppressed", 0))
+    return ExecutionLogDTO(**data)
 
 
 def _compute_p95(values: List[float]) -> float:
@@ -94,6 +106,7 @@ class DatabaseRepository:
                 enabled INTEGER NOT NULL DEFAULT 1,
                 consecutive_failures INTEGER NOT NULL DEFAULT 0,
                 alert_threshold INTEGER NOT NULL DEFAULT 2,
+                parent_id INTEGER,
                 last_checked_at TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
@@ -109,10 +122,15 @@ class DatabaseRepository:
                 details TEXT NOT NULL,
                 status_code INTEGER,
                 ssl_days_left INTEGER,
+                suppressed INTEGER NOT NULL DEFAULT 0,
+                root_task_id INTEGER,
                 executed_at TEXT NOT NULL,
                 FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
             );
             """)
+        # parent_id сознательно без FOREIGN KEY: ALTER TABLE не умеет добавлять
+        # ограничения, а свежая и мигрированная база должны вести себя одинаково.
+        # Целостность цепи держат set_task_parent() и delete_task().
 
     async def _migrate_schema(self) -> None:
         await self._add_missing_columns("tasks", TASK_MIGRATIONS)
@@ -181,10 +199,10 @@ class DatabaseRepository:
             INSERT INTO tasks (
                 user_id, title, category, target_endpoint, priority, status,
                 check_interval_sec, expected_status, expected_text, ssl_min_days,
-                enabled, consecutive_failures, alert_threshold,
+                enabled, consecutive_failures, alert_threshold, parent_id,
                 last_checked_at, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 task.user_id,
@@ -200,6 +218,7 @@ class DatabaseRepository:
                 int(task.enabled),
                 task.consecutive_failures,
                 task.alert_threshold,
+                task.parent_id,
                 task.last_checked_at,
                 now,
                 now,
@@ -372,6 +391,70 @@ class DatabaseRepository:
         await self._db.commit()
         return cursor.rowcount > 0
 
+    async def get_task_parent(self, task_id: int) -> Optional[TaskDTO]:
+        cursor = await self._db.execute(
+            """
+            SELECT p.* FROM tasks p
+            JOIN tasks c ON c.parent_id = p.id
+            WHERE c.id = ?
+            """,
+            (task_id,),
+        )
+        row = await cursor.fetchone()
+        return _row_to_task(row) if row else None
+
+    async def _ancestor_chain(self, task_id: int) -> List[TaskDTO]:
+        """Предки вверх по parent_id. Замкнутая вручную цепь не зацикливает обход."""
+        chain: List[TaskDTO] = []
+        seen = {task_id}
+        current = task_id
+        while len(chain) < MAX_TREE_DEPTH:
+            parent = await self.get_task_parent(current)
+            if parent is None or parent.id in seen:
+                break
+            seen.add(parent.id)
+            chain.append(parent)
+            current = parent.id
+        return chain
+
+    async def find_root_cause(self, task_id: int) -> Optional[TaskDTO]:
+        """Верхний упавший предок: падение ребёнка — симптом, а не новый инцидент."""
+        blocked_by: Optional[TaskDTO] = None
+        for ancestor in await self._ancestor_chain(task_id):
+            if ancestor.enabled and ancestor.status == "failed":
+                blocked_by = ancestor
+        return blocked_by
+
+    async def set_task_parent(
+        self, task_id: int, parent_id: Optional[int], user_id: int
+    ) -> bool:
+        if parent_id is not None:
+            await self._validate_parent_link(task_id, parent_id, user_id)
+        now = datetime.now(timezone.utc).isoformat()
+        cursor = await self._db.execute(
+            "UPDATE tasks SET parent_id = ?, updated_at = ? "
+            "WHERE id = ? AND user_id = ?",
+            (parent_id, now, task_id, user_id),
+        )
+        await self._db.commit()
+        return cursor.rowcount > 0
+
+    async def _validate_parent_link(
+        self, task_id: int, parent_id: int, user_id: int
+    ) -> None:
+        if parent_id == task_id:
+            raise ValueError("Монитор не может быть сам себе родителем")
+        parent = await self.get_task_by_id(parent_id, user_id=user_id)
+        if parent is None:
+            raise ValueError(
+                "Родительский монитор не найден или принадлежит другому пользователю"
+            )
+        chain = await self._ancestor_chain(parent_id)
+        if any(node.id == task_id for node in chain):
+            raise ValueError("Такая связь замкнула бы цикл в дереве мониторов")
+        if len(chain) + 1 > MAX_TREE_DEPTH:
+            raise ValueError(f"Цепочка длиннее {MAX_TREE_DEPTH} мониторов")
+
     async def delete_task(self, task_id: int, user_id: Optional[int] = None) -> bool:
         if user_id is not None:
             cursor = await self._db.execute(
@@ -381,6 +464,12 @@ class DatabaseRepository:
         else:
             cursor = await self._db.execute(
                 "DELETE FROM tasks WHERE id = ?", (task_id,)
+            )
+        if cursor.rowcount:
+            # Ребёнок удалённого монитора становится корнем: висячий parent_id
+            # спрятал бы ветку от /tree и нашёл бы «несуществующего родителя».
+            await self._db.execute(
+                "UPDATE tasks SET parent_id = NULL WHERE parent_id = ?", (task_id,)
             )
         await self._db.commit()
         return cursor.rowcount > 0
@@ -394,6 +483,8 @@ class DatabaseRepository:
         status_code: Optional[int],
         consecutive_failures: int,
         ssl_days_left: Optional[int] = None,
+        suppressed: bool = False,
+        root_task_id: Optional[int] = None,
     ) -> Optional[ExecutionLogDTO]:
         now = datetime.now(timezone.utc).isoformat()
         cursor = await self._db.execute(
@@ -413,9 +504,9 @@ class DatabaseRepository:
                 """
                 INSERT INTO execution_logs (
                     task_id, result_status, latency_ms, details,
-                    status_code, ssl_days_left, executed_at
+                    status_code, ssl_days_left, suppressed, root_task_id, executed_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     task_id,
@@ -424,6 +515,8 @@ class DatabaseRepository:
                     details,
                     status_code,
                     ssl_days_left,
+                    int(suppressed),
+                    root_task_id,
                     now,
                 ),
             )
@@ -439,6 +532,8 @@ class DatabaseRepository:
             details=details,
             status_code=status_code,
             ssl_days_left=ssl_days_left,
+            suppressed=bool(suppressed),
+            root_task_id=root_task_id,
             executed_at=now,
         )
 
@@ -448,9 +543,9 @@ class DatabaseRepository:
             """
             INSERT INTO execution_logs (
                 task_id, result_status, latency_ms, details,
-                status_code, ssl_days_left, executed_at
+                status_code, ssl_days_left, suppressed, root_task_id, executed_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 log_entry.task_id,
@@ -459,6 +554,8 @@ class DatabaseRepository:
                 log_entry.details,
                 log_entry.status_code,
                 log_entry.ssl_days_left,
+                int(log_entry.suppressed),
+                log_entry.root_task_id,
                 now,
             ),
         )
@@ -485,7 +582,7 @@ class DatabaseRepository:
                 (task_id, limit),
             )
         rows = await cursor.fetchall()
-        return [ExecutionLogDTO(**dict(r)) for r in rows]
+        return [_row_to_log(r) for r in rows]
 
     async def get_recent_incidents(
         self, user_id: int, limit: int = 10
@@ -493,9 +590,11 @@ class DatabaseRepository:
         cursor = await self._db.execute(
             """
             SELECT l.id, l.task_id, t.title, t.target_endpoint,
-                   l.latency_ms, l.details, l.executed_at
+                   l.latency_ms, l.details, l.executed_at,
+                   l.suppressed, r.id AS root_id, r.title AS root_title
             FROM execution_logs l
             JOIN tasks t ON l.task_id = t.id
+            LEFT JOIN tasks r ON r.id = l.root_task_id
             WHERE t.user_id = ? AND l.result_status = 'failed'
             ORDER BY l.id DESC LIMIT ?
             """,
@@ -594,7 +693,7 @@ class DatabaseRepository:
         since_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
         cursor_logs = await self._db.execute(
             """
-            SELECT l.result_status, l.latency_ms
+            SELECT l.result_status, l.latency_ms, l.suppressed
             FROM execution_logs l
             JOIN tasks t ON l.task_id = t.id
             WHERE t.user_id = ? AND l.executed_at >= ?
@@ -609,6 +708,7 @@ class DatabaseRepository:
                 "p95_latency_ms": 0.0,
                 "uptime_24h_pct": 100.0,
                 "checks_24h": 0,
+                "suppressed_24h": 0,
             }
         latencies = [float(r["latency_ms"]) for r in recent_logs]
         ok_24h = sum(1 for r in recent_logs if r["result_status"] == "completed")
@@ -617,4 +717,5 @@ class DatabaseRepository:
             "p95_latency_ms": _compute_p95(latencies),
             "uptime_24h_pct": round((ok_24h / total_24h) * 100.0, 2),
             "checks_24h": total_24h,
+            "suppressed_24h": sum(1 for r in recent_logs if r["suppressed"]),
         }

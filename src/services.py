@@ -126,6 +126,8 @@ class AsyncWorkerPool:
         final_status = "completed" if result.ok else "failed"
         new_failures = 0 if result.ok else prev_failures + 1
 
+        root = await self.repo.find_root_cause(task_id)
+        alert_event = self._alert_event(task, prev_failures, new_failures)
         try:
             log_dto = await self.repo.record_check_result(
                 task_id=task_id,
@@ -135,6 +137,8 @@ class AsyncWorkerPool:
                 status_code=result.status_code,
                 consecutive_failures=new_failures,
                 ssl_days_left=result.ssl_days_left,
+                suppressed=bool(alert_event is not None and root),
+                root_task_id=root.id if root else None,
             )
         except Exception:
             logger.exception("Не удалось сохранить результат проверки #%s", task_id)
@@ -149,6 +153,18 @@ class AsyncWorkerPool:
         await self._maybe_notify(task, log_dto, prev_failures, new_failures)
         return log_dto
 
+    @staticmethod
+    def _alert_event(
+        task: TaskDTO, prev_failures: int, new_failures: int
+    ) -> Optional[bool]:
+        """None — порога не касались; False — упал; True — восстановился."""
+        threshold = max(1, task.alert_threshold)
+        if new_failures == threshold:
+            return False
+        if new_failures == 0 and prev_failures >= threshold:
+            return True
+        return None
+
     async def _maybe_notify(
         self,
         task: TaskDTO,
@@ -156,15 +172,13 @@ class AsyncWorkerPool:
         prev_failures: int,
         new_failures: int,
     ) -> None:
-        if not self.alert_callback:
+        if not self.alert_callback or log_dto.suppressed:
             return
-        threshold = max(1, task.alert_threshold)
-        just_failed = new_failures == threshold
-        just_recovered = new_failures == 0 and prev_failures >= threshold
-        if not (just_failed or just_recovered):
+        event = self._alert_event(task, prev_failures, new_failures)
+        if event is None:
             return
         try:
-            await self.alert_callback(task, log_dto, just_recovered)
+            await self.alert_callback(task, log_dto, event)
         except Exception:
             logger.exception("Failed to send alert for task #%s", task.id)
 
