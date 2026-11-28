@@ -1,4 +1,4 @@
-# tt_bot — Self-hosted Telegram Endpoint & Task Monitor
+# tt_bot — Self-hosted Telegram Chat-Ops Monitor
 
 > **Языки:** [English](README.md) · [Русский](README.ru.md)
 

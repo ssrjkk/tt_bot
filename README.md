@@ -2,8 +2,9 @@
 
 > **Languages:** [English](README.md) · [Русский](README.ru.md)
 
-Self-hosted Telegram endpoint and task monitor for HTTP/HTTPS, TLS certificates
-and TCP services, with schedules, alerts, per-monitor SLA history and CSV export.
+Self-hosted Telegram chat-ops monitor for HTTP/HTTPS, TLS certificates and TCP
+services: probes, schedules, threshold alerts, per-monitor SLA history and CSV
+export — all driven from the chat, no dashboard to keep open.
 The full Russian documentation is in [README.ru.md](README.ru.md).
 
 **Site:** https://ssrjkk.github.io/tt_bot/  
