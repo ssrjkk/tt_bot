@@ -1,3 +1,4 @@
+import sqlite3
 from datetime import datetime, timedelta, timezone
 
 import aiosqlite
@@ -143,6 +144,64 @@ async def test_pagination_analytics_due_and_prune(db_repo):
         )
     )
     assert await db_repo.prune_old_logs(retention_days=30) == 1
+
+
+@pytest.mark.asyncio
+async def test_record_check_result_on_missing_task_returns_none(db_repo):
+    await db_repo.upsert_user(UserDTO(id=1006, username="u6", full_name="User 6"))
+    tid = await db_repo.create_task(
+        TaskDTO(
+            id=None,
+            user_id=1006,
+            title="Gone API",
+            category="backend",
+            target_endpoint="https://gone.example",
+        )
+    )
+    assert await db_repo.delete_task(tid, user_id=1006) is True
+
+    assert (
+        await db_repo.record_check_result(tid, "failed", 12.0, "HTTP 503", 503, 1)
+        is None
+    )
+    assert await db_repo.get_task_logs(tid) == []
+
+    surviving = await db_repo.create_task(
+        TaskDTO(
+            id=None,
+            user_id=1006,
+            title="Still Here",
+            category="backend",
+            target_endpoint="https://alive.example",
+        )
+    )
+    dto = await db_repo.record_check_result(surviving, "completed", 9.0, "200", 200, 0)
+    assert dto is not None
+    assert dto.id is not None
+    assert dto.task_id == surviving
+    assert len(await db_repo.get_task_logs(surviving)) == 1
+
+
+@pytest.mark.asyncio
+async def test_unwritable_result_rolls_back_without_half_written_state(db_repo):
+    await db_repo.upsert_user(UserDTO(id=1007, username="u7", full_name="User 7"))
+    tid = await db_repo.create_task(
+        TaskDTO(
+            id=None,
+            user_id=1007,
+            title="Atomic API",
+            category="backend",
+            target_endpoint="https://atomic.example",
+        )
+    )
+
+    with pytest.raises(sqlite3.Error):
+        await db_repo.record_check_result(tid, "failed", object(), "HTTP 503", 503, 4)
+
+    task = await db_repo.get_task_by_id(tid)
+    assert task.status == "pending"
+    assert task.consecutive_failures == 0
+    assert await db_repo.get_task_logs(tid) == []
 
 
 @pytest.mark.asyncio

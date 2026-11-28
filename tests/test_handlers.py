@@ -6,6 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, User
 
 from src.handlers import (
+    _parse_quick_add_args,
     _safe_edit,
     cb_create_start,
     cb_export_csv,
@@ -405,3 +406,76 @@ async def test_expect_command_and_maintenance_mode(db_repo, worker_pool):
     c_r = _make_call(3010, "menu:resume_all")
     await cb_resume_all(c_r, db_repo)
     assert (await db_repo.get_task_by_id(tid)).enabled is True
+
+
+def test_quick_add_args_accept_multiword_titles():
+    assert _parse_quick_add_args(
+        "/add Мой платёжный API https://api.example.com/health 5"
+    ) == ("Мой платёжный API", "https://api.example.com/health", 5)
+    assert _parse_quick_add_args("/add Pay API example.com:8545") == (
+        "Pay API",
+        "https://example.com:8545",
+        0,
+    )
+    assert _parse_quick_add_args("/add replica tcp://db.internal:5432 30") == (
+        "replica",
+        "tcp://db.internal:5432",
+        30,
+    )
+    # A dotted word inside the title must not win over the real endpoint.
+    assert _parse_quick_add_args("/add v1.0 API https://x.example/health") == (
+        "v1.0 API",
+        "https://x.example/health",
+        0,
+    )
+
+
+def test_quick_add_args_reject_ambiguous_input():
+    for bad in (
+        "/add",
+        "/add ТолькоНазвание",
+        "/add https://only.endpoint.example/x extra",
+        "/add A https://x.example 5 6",
+        "/add A https://x.example not-a-number",
+        "/add A https://x.example -5",
+    ):
+        with pytest.raises(ValueError):
+            _parse_quick_add_args(bad)
+
+
+@pytest.mark.asyncio
+async def test_quick_add_stores_full_title_and_interval(db_repo):
+    await db_repo.upsert_user(UserDTO(id=3011, username="qa", full_name="QA"))
+    msg = _make_message(3011, "/add Прод API здоровья https://ok.example/health 5")
+    await cmd_quick_add(msg, db_repo)
+    assert "создан" in msg.answer.call_args[0][0]
+
+    stored = (await db_repo.get_user_tasks(3011))[0]
+    assert stored.title == "Прод API здоровья"
+    assert stored.check_interval_sec == 300
+
+
+@pytest.mark.asyncio
+async def test_task_run_announces_unsaved_result(db_repo, worker_pool, monkeypatch):
+    await db_repo.upsert_user(UserDTO(id=3012, username="lost", full_name="Lost"))
+    tid = await db_repo.create_task(
+        TaskDTO(
+            id=None,
+            user_id=3012,
+            title="Write Lost",
+            category="backend",
+            target_endpoint="https://ok.example",
+        )
+    )
+
+    async def result_not_persisted(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(worker_pool, "execute_task_immediately", result_not_persisted)
+    call = _make_call(3012, f"task:run:{tid}")
+    await cb_task_run(call, worker_pool, db_repo)
+
+    rendered = call.message.edit_text.call_args[0][0]
+    assert "не сохранён" in rendered
+    assert "✅" not in rendered
+    assert "❌" not in rendered

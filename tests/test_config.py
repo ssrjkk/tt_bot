@@ -58,3 +58,22 @@ def test_load_settings_custom_env_and_clamping(monkeypatch):
 
     monkeypatch.setenv("LOG_FORMAT", "xml")
     assert load_settings(require_token=True).log_format == "text"
+
+
+def test_blank_env_falls_back_and_garbage_fails_loudly(monkeypatch):
+    monkeypatch.setenv("BOT_TOKEN", "123456:TEST_TOKEN")
+
+    monkeypatch.setenv("PROBE_TIMEOUT_SEC", "")
+    monkeypatch.setenv("WORKERS_COUNT", "  ")
+    cfg = load_settings(require_token=True)
+    assert cfg.probe_timeout_sec == 10.0
+    assert cfg.workers_count == 3
+
+    monkeypatch.setenv("WORKERS_COUNT", "three")
+    with pytest.raises(ValueError, match=r"WORKERS_COUNT must be an integer, got"):
+        load_settings(require_token=True)
+
+    monkeypatch.setenv("WORKERS_COUNT", "3")
+    monkeypatch.setenv("SCHEDULER_TICK_SEC", "15sec")
+    with pytest.raises(ValueError, match=r"SCHEDULER_TICK_SEC must be a number, got"):
+        load_settings(require_token=True)
