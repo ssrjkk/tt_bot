@@ -1,0 +1,29 @@
+{
+  "comment": "Бинарные витрины рендерятся из текста по соседству. Пиксели гейтом не прочитать, поэтому манифест хранит git-blob хэш источника, из которого файл был отрендерен: правка HTML без перерендера ломает test_binary_proof_assets_match_their_text_sources.",
+  "assets": [
+    {
+      "file": "docs/og-card.png",
+      "source": "docs/og-card.html",
+      "render": "chrome --headless=new --hide-scrollbars --window-size=1200,630 --screenshot=docs/og-card.png docs/og-card.html",
+      "source_blob": "68b4cef00e0dc87618ea09210d70c408fd3bfd0e"
+    },
+    {
+      "file": "docs/screenshots/home.jpg",
+      "source": "docs/index.html",
+      "render": "playwright chromium viewport 1440x900 scale 1 jpeg quality 85",
+      "source_blob": "ebe23f4c27bf2fe5749ed0a94b0eea865c6ce511"
+    },
+    {
+      "file": "docs/screenshots/content.jpg",
+      "source": "docs/index.html",
+      "render": "playwright chromium viewport 1440x900 scale 1 jpeg quality 85, scroll to #checklist minus 330px",
+      "source_blob": "ebe23f4c27bf2fe5749ed0a94b0eea865c6ce511"
+    },
+    {
+      "file": "docs/screenshots/mobile.jpg",
+      "source": "docs/index.html",
+      "render": "playwright chromium viewport 390x844 scale 2 jpeg quality 85",
+      "source_blob": "ebe23f4c27bf2fe5749ed0a94b0eea865c6ce511"
+    }
+  ]
+}

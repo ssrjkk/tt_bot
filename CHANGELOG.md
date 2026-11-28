@@ -55,6 +55,12 @@
   а это именно то, что видно в превью ссылки в Telegram и Twitter. У карточки появился
   исходник `docs/og-card.html` (`noindex`, команда рендера в комментарии и в `docs/DESIGN.md`),
   он же закрыт тем же гейтом по трём штампам, а в список фич встал `/link` + `/tree`.
+- **Скриншоты README перестали быть недоказуемыми.** `docs/screenshots/*.jpg` показывали
+  прошлую витрину: `REV 2.3`, «Что внутри v2.3» и кнопку «Открыть витрину-симулятор»,
+  которой на сайте нет с `docs: remove duplicate showcase page`. Картинки перерендерены с
+  текущего `docs/index.html`, а их провенанс закрепил
+  `test_binary_proof_assets_match_their_text_sources` по `docs/proof-manifest.json`:
+  правка HTML без перерендера бинарной витрины теперь красит CI, а не превью ссылки.
 
 ### Changed
 - Проект называется чат-ops монитором, а не «Endpoint & Task Monitor»: заголовки

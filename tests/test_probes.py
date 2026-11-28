@@ -1,4 +1,6 @@
 import asyncio
+import hashlib
+import json
 import re
 import socket
 import sys
@@ -48,6 +50,26 @@ def test_parse_cert_days_left_ignores_locale_bound_strptime(monkeypatch):
     assert parse_cert_days_left("Jan  5 00:00:00 2035 GMT") == expected
     assert parse_cert_days_left("Jan 5 00:00:00 2035 GMT") == expected
     assert parse_cert_days_left("Jan  5 00:00:00 2020 GMT") < 0
+
+
+def test_binary_proof_assets_match_their_text_sources():
+    """PNG и JPEG гейтом не читаются, поэтому манифест хранит git-blob хэш HTML, из которого их рендерили."""
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads(
+        (root / "docs" / "proof-manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["assets"], "манифест пуст — гейт ничего не проверяет"
+
+    for asset in manifest["assets"]:
+        source = root / asset["source"]
+        digest = hashlib.sha1(
+            b"blob %d\0" % source.stat().st_size + source.read_bytes()
+        )
+        assert (root / asset["file"]).is_file(), asset["file"]
+        assert digest.hexdigest() == asset["source_blob"], (
+            asset["file"],
+            asset["source"],
+        )
 
 
 def test_prober_version_is_one_constant_shared_with_docs():
