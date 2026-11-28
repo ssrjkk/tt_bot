@@ -3,6 +3,7 @@ import csv
 import io
 import logging
 import time
+from contextlib import suppress
 from typing import Any, Awaitable, Callable, Optional, Union
 
 from src.database import DatabaseRepository
@@ -111,7 +112,7 @@ class AsyncWorkerPool:
 
     async def execute_task_immediately(
         self, task_id: int, user_id: Optional[int] = None
-    ) -> ExecutionLogDTO:
+    ) -> Optional[ExecutionLogDTO]:
         task = await self.repo.get_task_by_id(task_id, user_id=user_id)
         if not task:
             raise ValueError(f"Задача #{task_id} не найдена в БД")
@@ -125,15 +126,26 @@ class AsyncWorkerPool:
         final_status = "completed" if result.ok else "failed"
         new_failures = 0 if result.ok else prev_failures + 1
 
-        log_dto = await self.repo.record_check_result(
-            task_id=task_id,
-            result_status=final_status,
-            latency_ms=elapsed_ms,
-            details=result.details,
-            status_code=result.status_code,
-            consecutive_failures=new_failures,
-            ssl_days_left=result.ssl_days_left,
-        )
+        try:
+            log_dto = await self.repo.record_check_result(
+                task_id=task_id,
+                result_status=final_status,
+                latency_ms=elapsed_ms,
+                details=result.details,
+                status_code=result.status_code,
+                consecutive_failures=new_failures,
+                ssl_days_left=result.ssl_days_left,
+            )
+        except Exception:
+            logger.exception("Не удалось сохранить результат проверки #%s", task_id)
+            with suppress(Exception):
+                await self.repo.update_task_status(task_id, task.status)
+            return None
+
+        if log_dto is None:
+            logger.info("Монитор #%s удалён во время проверки", task_id)
+            return None
+
         await self._maybe_notify(task, log_dto, prev_failures, new_failures)
         return log_dto
 

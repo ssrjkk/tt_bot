@@ -22,7 +22,7 @@ from src.keyboards import (
     tasks_list_kb,
 )
 from src.models import ExecutionLogDTO, TaskDTO, UserDTO
-from src.probes import normalize_endpoint
+from src.probes import BOT_VERSION, normalize_endpoint
 from src.services import AsyncWorkerPool, ReportGeneratorService
 from src.states import CreateTaskSG
 
@@ -108,7 +108,7 @@ def _render_home_text(stats: Dict[str, Any], name: Optional[str] = None) -> str:
     )
     return (
         f"{greet}"
-        "<b>tt_bot v2.3</b> — self-hosted монитор HTTP/HTTPS, SSL и TCP.\n"
+        f"<b>tt_bot v{BOT_VERSION}</b> — self-hosted монитор HTTP/HTTPS, SSL и TCP.\n"
         f"{summary}\n\n"
         "Выберите действие или используйте <code>/add Название URL [мин]</code>:"
     )
@@ -243,7 +243,7 @@ async def cmd_start(
 @router.message(Command("help"))
 async def cmd_help(message: Message) -> None:
     text = (
-        "<b>Справка tt_bot v2.3</b>\n\n"
+        f"<b>Справка tt_bot v{BOT_VERSION}</b>\n\n"
         "• /start — главное меню и сводка\n"
         "• /add <code>Название https://url [мин]</code> — быстрое создание\n"
         "• /expect <code>ID строка|-</code> — проверка текста в ответе\n"
@@ -258,15 +258,38 @@ async def cmd_help(message: Message) -> None:
     await message.answer(text, reply_markup=main_menu_kb(), parse_mode="HTML")
 
 
+def _looks_like_host(token: str) -> bool:
+    return "." in token and not token.isdigit()
+
+
 def _parse_quick_add_args(text: Optional[str]) -> tuple[str, str, int]:
     parts = (text or "").split()
     if len(parts) < 3:
         raise ValueError(
             "Формат: <code>/add Название https://api.example.com/health [мин]</code>"
         )
-    title = parts[1].strip()[:80]
-    endpoint = normalize_endpoint(parts[2])
-    interval_min = _parse_int(parts[3]) if len(parts) >= 4 else 0
+    scheme_idx = next((i for i in range(1, len(parts)) if "://" in parts[i]), None)
+    host_idx = next(
+        (i for i in range(1, len(parts)) if _looks_like_host(parts[i])), None
+    )
+    ep_idx = scheme_idx if scheme_idx is not None else host_idx
+    if ep_idx is None:
+        raise ValueError(
+            "Не найден эндпоинт. Формат: "
+            "<code>/add Название https://api.example.com/health [мин]</code>"
+        )
+    title = " ".join(parts[1:ep_idx]).strip()[:80]
+    if not title:
+        raise ValueError("Название монитора не может быть пустым.")
+    endpoint = normalize_endpoint(parts[ep_idx])
+    tail_from = ep_idx + 1
+    tail = parts[tail_from:]
+    if len(tail) > 1:
+        raise ValueError(
+            "Слишком много аргументов. Формат: "
+            "<code>/add Название https://api.example.com/health [мин]</code>"
+        )
+    interval_min = _parse_int(tail[0]) if tail else 0
     if interval_min is None or interval_min < 0:
         raise ValueError("Интервал в минутах должен быть числом &gt;= 0.")
     return title, endpoint, interval_min
@@ -675,6 +698,15 @@ async def cb_task_run(
     )
     updated_task, logs, stats = await _load_card_view(repo, task_id, call.from_user.id)
     if not updated_task:
+        return
+    if log_entry is None:
+        await _safe_edit(
+            call,
+            "<b>Результат проверки не сохранён</b> — монитор удалён "
+            "или база данных недоступна.\n\n"
+            + _render_task_card(updated_task, logs, stats),
+            task_actions_kb(updated_task),
+        )
         return
     icon = "✅" if log_entry.result_status == "completed" else "❌"
     result_text = (

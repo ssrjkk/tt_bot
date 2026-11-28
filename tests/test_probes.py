@@ -1,12 +1,15 @@
 import asyncio
+import re
 import socket
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 from aiohttp import web
 
 from src.probes import (
+    BOT_VERSION,
     EndpointProber,
     _is_blocked_ip,
     _SafeResolver,
@@ -15,7 +18,7 @@ from src.probes import (
 )
 
 
-def test_normalize_endpoint_and_cert_date():
+def test_normalize_endpoint():
     assert normalize_endpoint("example.com/health") == "https://example.com/health"
     assert normalize_endpoint("  http://api.local/ping ") == "http://api.local/ping"
     assert normalize_endpoint("tcp://10.0.0.1:5432") == "tcp://10.0.0.1:5432"
@@ -25,10 +28,96 @@ def test_normalize_endpoint_and_cert_date():
     with pytest.raises(ValueError):
         normalize_endpoint("https://bad host/path")
 
-    future = (datetime.now(timezone.utc) + timedelta(days=45, hours=2)).strftime(
-        "%b %d %H:%M:%S %Y GMT"
+
+def test_parse_cert_days_left_ignores_locale_bound_strptime(monkeypatch):
+    class LocaleBrokenDatetime:
+        """``datetime`` with ``strptime`` unusable, as under a non-English LC_TIME."""
+
+        @staticmethod
+        def now(tz):
+            return datetime.now(tz)
+
+        @staticmethod
+        def strptime(*_args, **_kwargs):
+            raise ValueError("unsupported locale for directory format")
+
+    monkeypatch.setattr("src.probes.datetime", LocaleBrokenDatetime)
+
+    target = datetime(2035, 1, 5, tzinfo=timezone.utc)
+    expected = int((target - datetime.now(timezone.utc)).total_seconds() // 86400)
+    assert parse_cert_days_left("Jan  5 00:00:00 2035 GMT") == expected
+    assert parse_cert_days_left("Jan 5 00:00:00 2035 GMT") == expected
+    assert parse_cert_days_left("Jan  5 00:00:00 2020 GMT") < 0
+
+
+def test_prober_version_is_one_constant_shared_with_docs():
+    assert EndpointProber().user_agent == f"tt_bot-monitor/{BOT_VERSION}"
+
+    root = Path(__file__).resolve().parents[1]
+    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    head = re.search(r"^## \[(\d+\.\d+)\.\d+\]", changelog, re.M)
+    assert head is not None and head.group(1) == BOT_VERSION
+
+    for rel in ("README.ru.md", "ARCHITECTURE.md", "docs/DESIGN.md"):
+        assert f"v{BOT_VERSION}" in (root / rel).read_text(encoding="utf-8"), rel
+
+
+@pytest.mark.asyncio
+async def test_verify_ssl_reports_unavailable_expired_and_skipped(monkeypatch):
+    prober = EndpointProber(timeout_sec=1.0, allow_private=True)
+
+    async def unavailable(_host, _ip, _port):
+        return None, "ValueError: unsupported locale for directory format"
+
+    monkeypatch.setattr(prober, "_inspect_ssl_days", unavailable)
+    ok, days, details = await prober._verify_ssl(
+        "https", "h.example", "1.2.3.4", 443, 7, "HTTP 200 OK"
     )
-    assert parse_cert_days_left(future) == 45
+    assert ok is True
+    assert days is None
+    assert "срок SSL недоступен" in details
+    assert "unsupported locale" in details
+
+    async def expiring(_host, _ip, _port):
+        return 3, None
+
+    monkeypatch.setattr(prober, "_inspect_ssl_days", expiring)
+    ok_exp, days_exp, details_exp = await prober._verify_ssl(
+        "https", "h.example", "1.2.3.4", 443, 7, "HTTP 200 OK"
+    )
+    assert ok_exp is False
+    assert days_exp == 3
+    assert "SSL истекает через 3 дн." in details_exp
+
+    async def must_not_run(*_args):
+        raise AssertionError("TLS must not be inspected for this scheme")
+
+    monkeypatch.setattr(prober, "_inspect_ssl_days", must_not_run)
+    assert await prober._verify_ssl(
+        "http", "h.example", "1.2.3.4", 80, 7, "HTTP 200 OK"
+    ) == (True, None, "HTTP 200 OK")
+    assert await prober._verify_ssl(
+        "https", "h.example", "1.2.3.4", 443, 0, "HTTP 200 OK"
+    ) == (True, None, "HTTP 200 OK")
+
+
+@pytest.mark.asyncio
+async def test_ssl_inspection_of_non_tls_port_reports_error_not_none():
+    async def handle_client(_reader, writer):
+        writer.close()
+        await writer.wait_closed()
+
+    server = await asyncio.start_server(handle_client, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    prober = EndpointProber(timeout_sec=2.0, allow_private=True)
+    try:
+        days, error = await prober._inspect_ssl_days("127.0.0.1", "127.0.0.1", port)
+        assert days is None
+        assert error
+    finally:
+        server.close()
+        await server.wait_closed()
+        await prober.close()
 
 
 def test_is_blocked_ip_variants():

@@ -1,4 +1,5 @@
 import asyncio
+import sqlite3
 
 import pytest
 
@@ -161,6 +162,67 @@ async def test_alert_threshold_and_recovery_notifications(db_repo):
     state["should_fail"] = False
     await pool.execute_task_immediately(tid)
     assert events == [(tid, False, "failed"), (tid, True, "completed")]
+
+
+@pytest.mark.asyncio
+async def test_failed_write_restores_status_and_keeps_task_schedulable(
+    db_repo, monkeypatch
+):
+    async def ok_probe(_ep: str) -> ProbeResult:
+        return ProbeResult(ok=True, details="HTTP 200 OK", status_code=200)
+
+    await db_repo.upsert_user(UserDTO(id=2007, username="wr", full_name="Write Fail"))
+    tid = await db_repo.create_task(
+        TaskDTO(
+            id=None,
+            user_id=2007,
+            title="Flaky Storage",
+            category="backend",
+            target_endpoint="https://ok.example",
+            check_interval_sec=60,
+        )
+    )
+    assert (await db_repo.get_task_by_id(tid)).status == "pending"
+
+    async def broken_write(**_kwargs):
+        raise sqlite3.OperationalError("disk I/O error")
+
+    monkeypatch.setattr(db_repo, "record_check_result", broken_write)
+    pool = AsyncWorkerPool(repo=db_repo, workers_count=1, probe_func=ok_probe)
+
+    assert await pool.execute_task_immediately(tid) is None
+
+    task = await db_repo.get_task_by_id(tid)
+    assert task.status == "pending"
+    assert task.last_checked_at is None
+    assert tid in [t.id for t in await db_repo.get_due_tasks()]
+
+
+@pytest.mark.asyncio
+async def test_monitor_deleted_mid_check_returns_none_without_orphan_log(db_repo):
+    await db_repo.upsert_user(UserDTO(id=2008, username="gone", full_name="Gone"))
+    tid = await db_repo.create_task(
+        TaskDTO(
+            id=None,
+            user_id=2008,
+            title="Deleted Mid Check",
+            category="backend",
+            target_endpoint="https://race.example",
+            check_interval_sec=60,
+        )
+    )
+
+    async def delete_during_probe(_ep: str) -> ProbeResult:
+        assert await db_repo.delete_task(tid, user_id=2008) is True
+        return ProbeResult(ok=False, details="HTTP 503", status_code=503)
+
+    pool = AsyncWorkerPool(
+        repo=db_repo, workers_count=1, probe_func=delete_during_probe
+    )
+    assert await pool.execute_task_immediately(tid) is None
+    assert await db_repo.get_task_by_id(tid) is None
+    assert await db_repo.get_task_logs(tid) == []
+    assert await db_repo.get_due_tasks() == []
 
 
 @pytest.mark.asyncio
