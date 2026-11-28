@@ -12,4 +12,4 @@
 - **Клавиатурная навигация**: `⌘K` / `Ctrl+K` открывает Command Palette; `R` — прогон проверок, `T` — переключение темы, `I` — смена чернил, `Esc` — закрытие модалок.
 - **Zero-CLS и `tabular-nums`**: все счётчики SLA, P50, P95 и задержек используют `font-variant-numeric: tabular-nums`.
 - **Обратная связь**: стек тактильных тостов, кликабельные диагностические карточки строк и график задержки с линией SLA `100 мс` и hover-точками.
-- **SEO & Accessibility**: чистая статика без бандлера, `prefers-reduced-motion: reduce`, `:focus-visible`, один `<h1>` на страницу, JSON-LD `SoftwareApplication` и карточка `docs/og-card.png` (1200×630).
+- **SEO & Accessibility**: чистая статика без бандлера, `prefers-reduced-motion: reduce`, `:focus-visible`, один `<h1>` на страницу, JSON-LD `SoftwareApplication` и карточка `docs/og-card.png` (1200×630). Её исходник — `docs/og-card.html` с `noindex`; рендер: `chrome --headless=new --hide-scrollbars --window-size=1200,630 --screenshot=docs/og-card.png docs/og-card.html`. Штампы обеих витрин сверяет `test_landing_page_version_claims_match_the_bot`, поэтому PNG не может отстать от релиза незаметно.

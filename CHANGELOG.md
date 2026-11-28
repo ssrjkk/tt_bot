@@ -50,6 +50,11 @@
   (штамп, `REV`, `softwareVersion` в schema.org и тексты узлов), тогда как `BOT_VERSION`
   уже был `2.4`; `test_landing_page_version_claims_match_the_bot` сверяет все три шаблона
   с константой, поэтому следующий релиз обязан обновить и лендинг.
+- **OG-карточка больше не рисует прошлый релиз.** `docs/og-card.png` собиралась руками и
+  осталась с `v2.3 · strict`, `REV 2.3`, `PRODUCTION v2.3` и заголовком «Endpoint Monitor» —
+  а это именно то, что видно в превью ссылки в Telegram и Twitter. У карточки появился
+  исходник `docs/og-card.html` (`noindex`, команда рендера в комментарии и в `docs/DESIGN.md`),
+  он же закрыт тем же гейтом по трём штампам, а в список фич встал `/link` + `/tree`.
 
 ### Changed
 - Проект называется чат-ops монитором, а не «Endpoint & Task Monitor»: заголовки
