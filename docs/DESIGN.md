@@ -1,4 +1,4 @@
-# DESIGN.md — Strict Tactile Engineer's Notebook & Blueprint (`tt_bot` v2.3)
+# DESIGN.md — Strict Tactile Engineer's Notebook & Blueprint (`tt_bot` v2.4)
 
 Дизайн-спецификация сайта-блокнота (`docs/index.html`). Жёсткий, чёткий инженерный блокнот без «AI-slop».
 

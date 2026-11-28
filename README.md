@@ -19,6 +19,9 @@ The full Russian documentation is in [README.ru.md](README.ru.md).
 - HTTP status and body checks, TLS expiry checks and TCP port probes.
 - Anti-rebinding SSRF guard with redirects disabled by default.
 - Background scheduler and bulk incident actions.
+- Monitor dependency tree: `/link` wires services together, `/tree` renders it, and a failure
+  below a failed ancestor is stored as an attributed symptom (`suppressed`, `root_task_id`)
+  instead of firing its own alert.
 - Per-user Telegram isolation, anti-flood middleware and sanitized CSV export.
 - SQLite WAL history, automatic migrations and structured JSON logs.
 - Per-monitor SLA, P50/P95 latency and threshold alerts.
