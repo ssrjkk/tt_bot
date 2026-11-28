@@ -582,10 +582,16 @@ html[data-theme="blueprint"] .flt-btn[aria-pressed="true"]{background:var(--pen)
   .hole{width:15px;height:15px}
   .hole::after{display:none}
   .hero,.checklist-wrap,.stickies-grid,.sketch-flow{grid-template-columns:1fr}
-  .tel-btn,.brand,.pad-chip,.drawer-btn{min-height:24px}
+  button,input,select,textarea,a[href]{min-height:44px}
+  button,input,select,textarea{min-width:44px}
+  #pad-input{font-size:16px}
+  .ink-picker{height:56px;padding:0 4px;gap:4px}
+  .code-bar{flex-wrap:wrap;gap:8px}
+  #code-caption{flex:1 1 100%}
+  .tel-btn,.brand,.pad-chip,.drawer-btn{min-height:44px}
   .pad-chip{padding:6px 10px}
-  .ink-dot{width:24px;height:24px}
-  footer a{display:inline-block;min-height:24px;padding:4px 2px}
+  .ink-dot{width:44px;height:44px}
+  footer a{display:inline-block;min-height:44px;padding:4px 2px}
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
@@ -873,7 +879,7 @@ html[data-theme="blueprint"] .flt-btn[aria-pressed="true"]{background:var(--pen)
               <span id="copy-label">Скопировать</span>
             </button>
           </div>
-<pre id="code-block">git clone https://github.com/ssrjkk/tt_bot.git
+<pre id="code-block" tabindex="0" role="region" aria-labelledby="code-caption">git clone https://github.com/ssrjkk/tt_bot.git
 cd tt_bot
 cp .env.example .env
 # укажи BOT_TOKEN в .env
@@ -1365,6 +1371,7 @@ docker compose up -d --build</pre>
   const cmdkInput = document.getElementById("cmdk-input");
   const cmdkList = document.getElementById("cmdk-list");
   let cmdkIdx = 0;
+  let cmdkReturnFocus = null;
 
   const COMMANDS = [
     {label:"Прогнать живой чек-лист проверок", hint:"R", run:() => { document.getElementById("checklist").scrollIntoView(); runSimulation(); }},
@@ -1392,8 +1399,17 @@ docker compose up -d --build</pre>
     });
     return filtered;
   }
-  function openCmdk(){ backdrop.classList.add("open"); cmdkInput.value = ""; cmdkIdx = 0; renderCmdk(); cmdkInput.focus(); }
-  function closeCmdk(){ backdrop.classList.remove("open"); }
+  function openCmdk(){
+    cmdkReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    backdrop.classList.add("open"); cmdkInput.value = ""; cmdkIdx = 0; renderCmdk(); cmdkInput.focus();
+  }
+  function closeCmdk(){
+    if(!backdrop.classList.contains("open")) return;
+    backdrop.classList.remove("open");
+    const target = cmdkReturnFocus;
+    cmdkReturnFocus = null;
+    if(target && target.isConnected) target.focus();
+  }
 
   document.getElementById("cmdk-open").addEventListener("click", openCmdk);
   backdrop.addEventListener("click", e => { if(e.target === backdrop) closeCmdk(); });
