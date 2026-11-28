@@ -62,6 +62,19 @@ def test_prober_version_is_one_constant_shared_with_docs():
         assert f"v{BOT_VERSION}" in (root / rel).read_text(encoding="utf-8"), rel
 
 
+def test_landing_page_version_claims_match_the_bot():
+    """Pages-лендинг живёт отдельно от README: без гейта он вечно кричит про прошлую версию."""
+    root = Path(__file__).resolve().parents[1]
+    landing = (root / "docs" / "index.html").read_text(encoding="utf-8")
+
+    claims = {
+        "stamp": set(re.findall(r"\bv(\d+\.\d+)\b", landing)),
+        "registration": set(re.findall(r"REV (\d+\.\d+)", landing)),
+        "schema.org": set(re.findall(r'"softwareVersion":"(\d+\.\d+)', landing)),
+    }
+    assert claims == {k: {BOT_VERSION} for k in claims}, claims
+
+
 @pytest.mark.asyncio
 async def test_verify_ssl_reports_unavailable_expired_and_skipped(monkeypatch):
     prober = EndpointProber(timeout_sec=1.0, allow_private=True)
