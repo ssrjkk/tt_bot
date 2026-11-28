@@ -3,6 +3,7 @@ import ipaddress
 import socket
 import ssl
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, List, Optional
 from urllib.parse import urlparse
 
@@ -13,6 +14,7 @@ from src.models import ProbeResult
 
 ALLOWED_SCHEMES = {"http", "https", "tcp"}
 MAX_BODY_INSPECT_BYTES = 65536
+BOT_VERSION = "2.3"
 
 
 def normalize_endpoint(raw: str) -> str:
@@ -41,9 +43,15 @@ def _is_blocked_ip(ip_str: str) -> bool:
 
 
 def parse_cert_days_left(not_after: str) -> int:
-    expiry = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(
-        tzinfo=timezone.utc
-    )
+    """Days remaining for an X.509 ``notAfter`` value from ``getpeercert()``.
+
+    ``ssl`` returns RFC-2822 UTC ("Jan  5 00:00:00 2035 GMT"); ``strptime`` with
+    ``%b``/``%Z`` resolves month and zone names through the active locale and
+    raises under any non-English one, so the parse must stay locale-free.
+    """
+    expiry = parsedate_to_datetime(not_after.strip())
+    if expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
     delta = expiry - datetime.now(timezone.utc)
     return int(delta.total_seconds() // 86400)
 
@@ -94,7 +102,7 @@ class EndpointProber:
         self,
         timeout_sec: float = 10.0,
         allow_private: bool = False,
-        user_agent: str = "tt_bot-monitor/2.1",
+        user_agent: str = f"tt_bot-monitor/{BOT_VERSION}",
     ) -> None:
         self.timeout_sec = timeout_sec
         self.allow_private = allow_private
@@ -177,7 +185,7 @@ class EndpointProber:
 
     async def _inspect_ssl_days(
         self, host: str, resolved_ip: str, port: int
-    ) -> Optional[int]:
+    ) -> tuple[Optional[int], Optional[str]]:
         try:
             ctx = ssl.create_default_context()
             _, writer = await asyncio.wait_for(
@@ -190,12 +198,14 @@ class EndpointProber:
                 ssl_obj = writer.get_extra_info("ssl_object")
                 cert = ssl_obj.getpeercert() if ssl_obj else None
                 not_after = cert.get("notAfter") if cert else None
-                return parse_cert_days_left(not_after) if not_after else None
+                if not not_after:
+                    return None, "нет поля notAfter в сертификате"
+                return parse_cert_days_left(not_after), None
             finally:
                 writer.close()
                 await writer.wait_closed()
-        except Exception:
-            return None
+        except Exception as exc:
+            return None, f"{type(exc).__name__}: {exc}"
 
     @staticmethod
     def _status_matches(status: int, expected_status: int) -> bool:
@@ -225,8 +235,10 @@ class EndpointProber:
     ) -> tuple[bool, Optional[int], str]:
         if scheme != "https" or ssl_min_days <= 0:
             return True, None, details
-        ssl_days = await self._inspect_ssl_days(host, resolved_ip, port)
-        if ssl_days is not None and ssl_days < ssl_min_days:
+        ssl_days, ssl_error = await self._inspect_ssl_days(host, resolved_ip, port)
+        if ssl_days is None:
+            return True, None, f"{details} · срок SSL недоступен: {ssl_error}"
+        if ssl_days < ssl_min_days:
             return False, ssl_days, f"{details} · SSL истекает через {ssl_days} дн."
         return True, ssl_days, details
 
