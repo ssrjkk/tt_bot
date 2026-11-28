@@ -394,9 +394,9 @@ class DatabaseRepository:
         status_code: Optional[int],
         consecutive_failures: int,
         ssl_days_left: Optional[int] = None,
-    ) -> ExecutionLogDTO:
+    ) -> Optional[ExecutionLogDTO]:
         now = datetime.now(timezone.utc).isoformat()
-        await self._db.execute(
+        cursor = await self._db.execute(
             """
             UPDATE tasks
             SET status = ?, consecutive_failures = ?,
@@ -405,27 +405,34 @@ class DatabaseRepository:
             """,
             (result_status, consecutive_failures, now, now, task_id),
         )
-        cursor = await self._db.execute(
-            """
-            INSERT INTO execution_logs (
-                task_id, result_status, latency_ms, details,
-                status_code, ssl_days_left, executed_at
+        if cursor.rowcount == 0:
+            await self._db.rollback()
+            return None
+        try:
+            insert = await self._db.execute(
+                """
+                INSERT INTO execution_logs (
+                    task_id, result_status, latency_ms, details,
+                    status_code, ssl_days_left, executed_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    task_id,
+                    result_status,
+                    latency_ms,
+                    details,
+                    status_code,
+                    ssl_days_left,
+                    now,
+                ),
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                task_id,
-                result_status,
-                latency_ms,
-                details,
-                status_code,
-                ssl_days_left,
-                now,
-            ),
-        )
+        except Exception:
+            await self._db.rollback()
+            raise
         await self._db.commit()
         return ExecutionLogDTO(
-            id=cursor.lastrowid,
+            id=insert.lastrowid,
             task_id=task_id,
             result_status=result_status,
             latency_ms=latency_ms,
