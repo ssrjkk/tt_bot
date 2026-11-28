@@ -1277,7 +1277,10 @@ docker compose up -d --build</pre>
   const padInput = document.getElementById("pad-input");
   function addCustomEndpoint(raw){
     const val = raw.trim();
-    if(!val) return;
+    if(!val){
+      showToast("Сначала впиши эндпоинт: https://my-api.io/health или tcp://db:5432", "err");
+      return;
+    }
     const ep = val.includes("://") ? val : `https://${val}`;
     const cat = ep.startsWith("tcp://") ? "devops" : "backend";
     const id = nextId++;
@@ -1327,13 +1330,31 @@ docker compose up -d --build</pre>
 
   function copyDeploy(){
     const label = document.getElementById("copy-label");
+    const ok = () => {
+      label.textContent = "Скопировано ✓";
+      showToast("Команда скопирована в буфер", "ok");
+      playTick(720, 0.05);
+      setTimeout(() => { label.textContent = "Скопировать"; }, 1800);
+    };
+    const fail = () => showToast("Буфер недоступен — выдели команду и скопируй вручную", "err");
+    const legacy = (text) => {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "-1000px";
+      document.body.appendChild(ta);
+      ta.select();
+      let copied = false;
+      try { copied = document.execCommand("copy"); } catch (_e) { copied = false; }
+      ta.remove();
+      if (copied) ok(); else fail();
+    };
+    const text = codeBlock.textContent;
     if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(codeBlock.textContent).then(() => {
-        label.textContent = "Скопировано ✓";
-        showToast("Команда скопирована в буфер", "ok");
-        playTick(720, 0.05);
-        setTimeout(() => { label.textContent = "Скопировать"; }, 1800);
-      });
+      navigator.clipboard.writeText(text).then(ok, () => legacy(text));
+    } else {
+      legacy(text);
     }
   }
   document.getElementById("copy-btn").addEventListener("click", copyDeploy);
