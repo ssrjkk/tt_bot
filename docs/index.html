@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>tt_bot — Инженерный Telegram-монитор сервисов v2.3 — SSRJKK</title>
-<meta name="description" content="Self-hosted Telegram-бот для HTTP/HTTPS, SSL и TCP-мониторинга: anti-rebinding SSRF guard, /add, /incidents, перепроверка упавших, SLA/P95, JSON-логи и CSV-отчёты.">
+<title>tt_bot — Инженерный Telegram-монитор сервисов v2.4 — SSRJKK</title>
+<meta name="description" content="Self-hosted Telegram-бот для HTTP/HTTPS, SSL и TCP-мониторинга: anti-rebinding SSRF guard, /add, /incidents, дерево зависимостей (/link, /tree) с атрибуцией причины, перепроверка упавших, SLA/P95, JSON-логи и CSV-отчёты.">
 <meta name="theme-color" content="#ede6d6">
 <link rel="canonical" href="https://ssrjkk.github.io/tt_bot/">
-<meta property="og:title" content="tt_bot v2.3 — Self-hosted Telegram Endpoint Monitor">
-<meta property="og:description" content="Реальные HTTP/TCP/SSL пробы, anti-rebinding SSRF guard, планировщик, /add, /incidents, SLA 24ч и SQLite WAL в одном Docker-контейнере.">
+<meta property="og:title" content="tt_bot v2.4 — Self-hosted Telegram Endpoint Monitor">
+<meta property="og:description" content="Реальные HTTP/TCP/SSL пробы, anti-rebinding SSRF guard, планировщик, /add, /incidents, дерево зависимостей с подавлением симптомных алертов, SLA 24ч и SQLite WAL в одном Docker-контейнере.">
 <meta property="og:image" content="https://ssrjkk.github.io/tt_bot/og-card.png">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://ssrjkk.github.io/tt_bot/">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://ssrjkk.github.io/tt_bot/og-card.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"tt_bot","applicationCategory":"DeveloperApplication","operatingSystem":"Linux, Docker, Python 3.11+","softwareVersion":"2.3.0","license":"https://opensource.org/licenses/MIT","url":"https://ssrjkk.github.io/tt_bot/","codeRepository":"https://github.com/ssrjkk/tt_bot","description":"Self-hosted Telegram bot for HTTP/HTTPS, SSL and TCP endpoint monitoring with anti-rebinding SSRF guard, scheduler, alerts, SLA 24h and CSV export."}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"tt_bot","applicationCategory":"DeveloperApplication","operatingSystem":"Linux, Docker, Python 3.11+","softwareVersion":"2.4.0","license":"https://opensource.org/licenses/MIT","url":"https://ssrjkk.github.io/tt_bot/","codeRepository":"https://github.com/ssrjkk/tt_bot","description":"Self-hosted Telegram bot for HTTP/HTTPS, SSL and TCP endpoint monitoring with anti-rebinding SSRF guard, scheduler, a monitor dependency tree that suppresses symptom alerts, SLA 24h and CSV export."}
 </script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='3' fill='%23fffdf7' stroke='%231d4ed8' stroke-width='2'/%3E%3Cline x1='10' y1='3' x2='10' y2='29' stroke='%23e16b79' stroke-width='1.6'/%3E%3Cpath d='M13 15l3 3 6-7' fill='none' stroke='%231d4ed8' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -525,7 +525,7 @@ html[data-theme="blueprint"] .cmdk-item:hover{color:#060e1d}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 
-/* ---------- Strict Top Telemetry Strip (v2.3) ---------- */
+/* ---------- Strict Top Telemetry Strip (v2.4) ---------- */
 .telemetry-strip{
   position:relative;z-index:4;
   display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
@@ -614,7 +614,7 @@ html[data-theme="blueprint"] .flt-btn[aria-pressed="true"]{background:var(--pen)
       <rect width="100%" height="100%" filter="url(#paperNoise)"/>
     </svg>
 
-    <div class="reg-meta" aria-hidden="true">+ REV 2.3 · SPEC-18 · ZERO-CLS +</div>
+    <div class="reg-meta" aria-hidden="true">+ REV 2.4 · SPEC-18 · ZERO-CLS +</div>
     <div class="margin-nums" aria-hidden="true" id="margin-nums"></div>
 
     <div class="holes" aria-hidden="true">
@@ -637,7 +637,7 @@ html[data-theme="blueprint"] .flt-btn[aria-pressed="true"]{background:var(--pen)
     <header class="sheet-head">
       <a class="brand" href="./">
         <span class="brand-name">tt_bot</span>
-        <span class="rubber-stamp">v2.3 · strict</span>
+        <span class="rubber-stamp">v2.4 · strict</span>
       </a>
       <nav class="nav" aria-label="Навигация">
         <a class="nav-link" href="#sketch">Схема</a>
@@ -674,7 +674,7 @@ html[data-theme="blueprint"] .flt-btn[aria-pressed="true"]{background:var(--pen)
           </h1>
           <p class="lead">
             <code>tt_bot</code> — self-hosted бот для <span class="hl">реальных HTTP/HTTPS, SSL и TCP-проверок</span>.
-            Однострочное добавление <code>/add</code>, лента <code>/incidents</code> с ретраем упавших, шкала <code>🟩🟩🟥🟩🟩</code>, anti-rebinding SSRF guard, <code>ThrottleMiddleware</code> и экспорт CSV без SaaS-подписок.
+            Однострочное добавление <code>/add</code>, лента <code>/incidents</code> с ретраем упавших, дерево зависимостей <code>/link</code> + <code>/tree</code>, где падение под мёртвым предком — симптом, а не десятый алерт, шкала <code>🟩🟩🟥🟩🟩</code>, anti-rebinding SSRF guard, <code>ThrottleMiddleware</code> и экспорт CSV без SaaS-подписок.
           </p>
           <div class="cta-row">
             <a class="btn btn-paper" href="https://github.com/ssrjkk/tt_bot">
@@ -692,15 +692,16 @@ html[data-theme="blueprint"] .flt-btn[aria-pressed="true"]{background:var(--pen)
           </div>
         </div>
 
-        <aside class="sticky" aria-label="Спецификация v2.3">
+        <aside class="sticky" aria-label="Спецификация v2.4">
           <svg class="paperclip" viewBox="0 0 32 56" fill="none" aria-hidden="true">
             <path d="M10 18V42a8 8 0 0 0 16 0V12a6 6 0 0 0-12 0v26a3.5 3.5 0 0 0 7 0V16" stroke="#475569" stroke-width="2.6" stroke-linecap="round"/>
           </svg>
-          <p class="hand-note"><span>Что внутри v2.3:</span><span>✓</span></p>
+          <p class="hand-note"><span>Что внутри v2.4:</span><span>✓</span></p>
           <ul>
             <li><code>HTTP + TCP + SSL</code> + body check</li>
             <li><code>_SafeResolver</code> anti-rebinding SSRF</li>
             <li><code>/add</code>, <code>/incidents</code>, <code>Ретрай упавших</code></li>
+            <li><code>/link</code> + <code>/tree</code>: алерт у верхнего упавшего предка</li>
             <li>SLA 24ч на карточке + порог алертов 1..3</li>
             <li><code>ThrottleMiddleware</code> + JSON-логи</li>
             <li>IDOR + HTML + CSV + fallback без тупиков</li>
@@ -746,7 +747,7 @@ html[data-theme="blueprint"] .flt-btn[aria-pressed="true"]{background:var(--pen)
             <circle cx="720" cy="9" r="4" fill="var(--red)"/>
           </svg>
           <p class="sketch-note" id="sketch-note">
-            <code>src/handlers.py + src/middlewares.py</code> — <code>ThrottleMiddleware</code> гасит спам-клики (0.4с), команды <code>/add</code>, <code>/status</code>, <code>/incidents</code> и все callback-и изолированы по <code>user_id</code>, а неизвестные URL получают мгновенную подсказку вместо молчания.
+            <code>src/handlers.py + src/middlewares.py</code> — <code>ThrottleMiddleware</code> гасит спам-клики (0.4с), команды <code>/add</code>, <code>/status</code>, <code>/incidents</code>, <code>/link</code>, <code>/tree</code> и все callback-и изолированы по <code>user_id</code>, а неизвестные URL получают мгновенную подсказку вместо молчания.
           </p>
         </div>
 
@@ -887,7 +888,7 @@ docker compose up -d --build</pre>
           <path d="M9 26c3-7 7-13 13-15 3-1 6 0 7 2l4 1-4 2c-1 5-4 10-10 12l-4 3-2-3-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="24" cy="14" r="1.4" fill="currentColor"/>
         </svg>
-        ssrjkk · tt_bot v2.3 · MIT
+        ssrjkk · tt_bot v2.4 · MIT
       </span>
       <span>
         <a href="https://github.com/ssrjkk/tt_bot">GitHub</a> ·
@@ -906,7 +907,7 @@ docker compose up -d --build</pre>
       <span class="kbd">ESC</span>
     </div>
     <ul class="cmdk-list" id="cmdk-list"></ul>
-    <div class="cmdk-foot"><span>↑↓ навигация · Enter выбор</span><span>tt_bot v2.3 palette</span></div>
+    <div class="cmdk-foot"><span>↑↓ навигация · Enter выбор</span><span>tt_bot v2.4 palette</span></div>
   </div>
 </div>
 
@@ -925,7 +926,7 @@ docker compose up -d --build</pre>
       <div class="hk-row"><span>Инспектор узлов 1–5</span><span class="kbd">1 – 5</span></div>
       <div class="hk-row"><span>Эта шпаргалка</span><span class="kbd">?</span></div>
     </div>
-    <div class="cmdk-foot"><span>Навигация без мыши · Zero-CLS</span><span>tt_bot v2.3</span></div>
+    <div class="cmdk-foot"><span>Навигация без мыши · Zero-CLS</span><span>tt_bot v2.4</span></div>
   </div>
 </div>
 
@@ -1053,10 +1054,10 @@ docker compose up -d --build</pre>
 
   /* Architecture sketch notes */
   const SKETCH_NOTES = {
-    router: '<code>src/handlers.py + src/middlewares.py</code> — <code>ThrottleMiddleware</code> гасит спам-клики (0.4с), команды <code>/add</code>, <code>/status</code>, <code>/incidents</code> и все callback-и изолированы по <code>user_id</code>, а неизвестные URL получают мгновенную подсказку вместо молчания.',
+    router: '<code>src/handlers.py + src/middlewares.py</code> — <code>ThrottleMiddleware</code> гасит спам-клики (0.4с), команды <code>/add</code>, <code>/status</code>, <code>/incidents</code>, <code>/link</code>, <code>/tree</code> и все callback-и изолированы по <code>user_id</code>, а неизвестные URL получают мгновенную подсказку вместо молчания.',
     pool: '<code>src/services.py → AsyncWorkerPool</code> — дедупликация очереди <code>_in_flight</code>, параллельный запуск <code>Проверить все</code> и <code>Перепроверить упавшие</code>, изоляция падений пробника и <code>stop(drain_timeout=10)</code>.',
     prober: '<code>src/probes.py → EndpointProber</code> — <code>_SafeResolver</code> блокирует приватные IP и DNS rebinding (<code>ttl_dns_cache=0</code>), проверяет HTTP-код, подстроку ответа (до 64 КБ), срок SSL-сертификата и TCP-порты.',
-    db: '<code>src/database.py → DatabaseRepository</code> — SQLite WAL + <code>busy_timeout=5000</code>, авто-миграция схемы v1 → v2.3, per-monitor SLA 24ч, история 10 проверок (<code>🟩🟩🟥🟩🟩</code>) и P95.',
+    db: '<code>src/database.py → DatabaseRepository</code> — SQLite WAL + <code>busy_timeout=5000</code>, авто-миграция схемы v1 → v2.4, дерево <code>tasks.parent_id</code> с атрибуцией <code>logs.root_task_id/suppressed</code>, per-monitor SLA 24ч, история 10 проверок (<code>🟩🟩🟥🟩🟩</code>) и P95.',
     alerts: '<code>src/services.py → MonitorScheduler + src/main.py</code> — авто-опрос каждые 1/5/15 мин, настраиваемый порог алертов (1..3 ошибки) в карточке и уведомление о восстановлении.'
   };
   const sketchNote = document.getElementById("sketch-note");
